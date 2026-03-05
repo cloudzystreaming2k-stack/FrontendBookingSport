@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Trash2, ShieldCheck, ShieldOff, Search, Plus,
-  RefreshCw, Users, UserCog, Loader2
+  RefreshCw, Users, UserCog, Loader2, Pencil
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -64,6 +64,16 @@ export function AdminUsers() {
   const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", phone: "", role: "user" });
   const [isCreating, setIsCreating] = useState(false);
 
+  // State Dialog chỉnh sửa
+  const [editTarget, setEditTarget] = useState<UserItem | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", role: "user" });
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const openEditDialog = (user: UserItem) => {
+    setEditTarget(user);
+    setEditForm({ name: user.name, email: user.email, phone: user.phone || "", role: user.role });
+  };
+
   // ─── Fetch Users ────────────────────────────────────────────────
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -121,7 +131,26 @@ export function AdminUsers() {
     }
   };
 
-  // ─── Tạo User Mới ───────────────────────────────────────────────
+  // ─── Cập nhật User ─────────────────────────────────────────────
+  const handleUpdate = async () => {
+    if (!editTarget) return;
+    if (!editForm.name || !editForm.email) {
+      toast.error("Họ tên và Email không được để trống.");
+      return;
+    }
+    setIsUpdating(true);
+    try {
+      await api.put(`/admin/users/${editTarget._id}`, editForm);
+      toast.success(`Đã cập nhật thông tin "${editForm.name}" thành công.`);
+      setEditTarget(null);
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể cập nhật thông tin.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleCreate = async () => {
     if (!createForm.name || !createForm.email || !createForm.password) {
       toast.error("Vui lòng điền đầy đủ thông tin bắt buộc.");
@@ -297,6 +326,15 @@ export function AdminUsers() {
                               <ShieldCheck className="w-4 h-4 text-green-600" />
                             )}
                           </Button>
+                          {/* Nút chỉnh sửa */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            title="Chỉnh sửa thông tin"
+                            onClick={() => openEditDialog(user)}
+                          >
+                            <Pencil className="w-4 h-4 text-blue-600" />
+                          </Button>
                           {/* Nút xóa */}
                           <Button
                             variant="outline"
@@ -430,6 +468,71 @@ export function AdminUsers() {
             <Button onClick={handleCreate} disabled={isCreating}>
               {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Tạo tài khoản
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog Chỉnh sửa thông tin ──────────────────────────── */}
+      <Dialog open={!!editTarget} onOpenChange={() => setEditTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Chỉnh sửa thông tin người dùng</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <Label htmlFor="edit-name">Họ và tên <span className="text-red-500">*</span></Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="edit-email">Email <span className="text-red-500">*</span></Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="edit-phone">Số điện thoại</Label>
+              <Input
+                id="edit-phone"
+                placeholder="0901234567"
+                value={editForm.phone}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Vai trò</Label>
+              <Select
+                value={editForm.role}
+                onValueChange={(v) => setEditForm({ ...editForm, role: v })}
+                disabled={editTarget?._id === currentAdmin?._id}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">Khách hàng</SelectItem>
+                  <SelectItem value="admin">Quản trị viên</SelectItem>
+                </SelectContent>
+              </Select>
+              {editTarget?._id === currentAdmin?._id && (
+                <p className="text-xs text-gray-400">Không thể thay đổi vai trò của chính mình.</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTarget(null)} disabled={isUpdating}>
+              Hủy
+            </Button>
+            <Button onClick={handleUpdate} disabled={isUpdating}>
+              {isUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Lưu thay đổi
             </Button>
           </DialogFooter>
         </DialogContent>
