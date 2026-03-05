@@ -1,0 +1,99 @@
+import axios from "axios";
+import type { InternalAxiosRequestConfig } from "axios";
+
+// ─── Mở rộng kiểu AxiosRequestConfig để hỗ trợ _retry flag ───────
+declare module "axios" {
+   export interface InternalAxiosRequestConfig {
+      _retry?: boolean;
+   }
+}
+
+// Base URL cho Backend API
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+// Tạo Axios instance với cấu hình mặc định
+const api = axios.create({
+   baseURL: API_URL,
+   withCredentials: true, // Tự động gửi/nhận HttpOnly Cookie (Refresh Token)
+   headers: {
+      "Content-Type": "application/json",
+   },
+});
+
+// ─── Request Interceptor ───────────────────────────────────────
+// Tự động thêm Access Token vào Header mỗi request
+api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+   const token = localStorage.getItem("accessToken");
+   if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+   }
+   return config;
+});
+
+// ─── Response Interceptor (Silent Refresh) ────────────────────
+// Khi API trả về 401 (Token hết hạn), tự động lấy token mới
+let isRefreshing = false;
+let failedQueue: Array<{
+   resolve: (value: unknown) => void;
+   reject: (reason?: unknown) => void;
+}> = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+   failedQueue.forEach((prom) => {
+      if (error) {
+         prom.reject(error);
+      } else {
+         prom.resolve(token);
+      }
+   });
+   failedQueue = [];
+};
+
+api.interceptors.response.use(
+   (response) => response,
+   async (error) => {
+      const originalRequest: InternalAxiosRequestConfig = error.config;
+
+      if (error.response?.status === 401 && !originalRequest._retry) {
+         if (isRefreshing) {
+            return new Promise((resolve, reject) => {
+               failedQueue.push({ resolve, reject });
+            })
+               .then((token) => {
+                  originalRequest.headers.Authorization = `Bearer ${token}`;
+                  return api(originalRequest);
+               })
+               .catch((err) => Promise.reject(err));
+         }
+
+         originalRequest._retry = true;
+         isRefreshing = true;
+
+         try {
+            // Gọi endpoint refresh-token (cookie tự động được gửi)
+            const { data } = await axios.post(
+               `${API_URL}/auth/refresh-token`,
+               {},
+               { withCredentials: true }
+            );
+            const newAccessToken: string = data.accessToken;
+            localStorage.setItem("accessToken", newAccessToken);
+            processQueue(null, newAccessToken);
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+            return api(originalRequest);
+         } catch (refreshError) {
+            processQueue(refreshError, null);
+            localStorage.removeItem("accessToken");
+            // Redirect về trang login nếu refresh thất bại
+            window.location.href = "/login";
+            return Promise.reject(refreshError);
+         } finally {
+            isRefreshing = false;
+         }
+      }
+
+      return Promise.reject(error);
+   }
+);
+
+export default api;
