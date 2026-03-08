@@ -84,7 +84,6 @@ export interface CourtType {
   id: string;
   name: string;
   slug: string;
-  description: string;
   icon: string; // emoji or icon name
   color: string; // tailwind color class
   features: string[];
@@ -677,7 +676,6 @@ export const mockCourtTypes: CourtType[] = [
     id: 'CT001',
     name: 'Pickleball',
     slug: 'pickleball',
-    description: 'Môn thể thao kết hợp giữa tennis, cầu lông và bóng bàn. Đang là xu hướng hot nhất hiện nay tại Việt Nam.',
     icon: '🏓',
     color: 'bg-orange-500',
     features: ['Sân nhỏ dễ học', 'Thích hợp mọi lứa tuổi', 'Ít chấn thương', 'Thi đấu đôi hoặc đơn'],
@@ -691,7 +689,6 @@ export const mockCourtTypes: CourtType[] = [
     id: 'CT002',
     name: 'Cầu lông',
     slug: 'badminton',
-    description: 'Môn thể thao vợt phổ biến nhất tại Việt Nam, phù hợp cho mọi lứa tuổi và trình độ.',
     icon: '🏸',
     color: 'bg-green-500',
     features: ['Phổ biến rộng rãi', 'Rèn luyện phản xạ', 'Cải thiện thể lực', 'Thi đấu đơn và đôi'],
@@ -705,7 +702,6 @@ export const mockCourtTypes: CourtType[] = [
     id: 'CT003',
     name: 'Bóng rổ',
     slug: 'basketball',
-    description: 'Môn thể thao đồng đội năng động, giúp phát triển chiều cao và thể lực toàn diện.',
     icon: '🏀',
     color: 'bg-red-500',
     features: ['Thể thao đồng đội', 'Phát triển chiều cao', 'Rèn kỹ năng teamwork', 'Đốt calo hiệu quả'],
@@ -719,7 +715,6 @@ export const mockCourtTypes: CourtType[] = [
     id: 'CT004',
     name: 'Tennis',
     slug: 'tennis',
-    description: 'Môn thể thao quý tộc với lịch sử lâu đời, đòi hỏi kỹ thuật và sức bền cao.',
     icon: '🎾',
     color: 'bg-yellow-500',
     features: ['Kỹ thuật cao', 'Rèn luyện toàn diện', 'Thích hợp thi đấu chuyên nghiệp', 'Cải thiện sự tập trung'],
@@ -733,7 +728,6 @@ export const mockCourtTypes: CourtType[] = [
     id: 'CT005',
     name: 'Bóng chuyền',
     slug: 'volleyball',
-    description: 'Môn thể thao đồng đội sôi động, phổ biến ở bãi biển và trong nhà.',
     icon: '🏐',
     color: 'bg-blue-500',
     features: ['Thể thao đồng đội 6 người', 'Phát triển phối hợp', 'Tăng chiều cao', 'Vui vẻ và năng động'],
