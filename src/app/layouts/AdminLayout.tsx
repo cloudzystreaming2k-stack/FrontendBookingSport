@@ -12,6 +12,7 @@ import {
   X,
   Home,
   Shapes,
+  Link2,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -23,6 +24,7 @@ export function AdminLayout() {
     { path: "/admin", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/admin/courts", icon: MapPin, label: "Quản lý sân" },
     { path: "/admin/court-types", icon: Shapes, label: "Loại sân" },
+    { path: "/admin/facilities", icon: Link2, label: "Tiện ích" },
     { path: "/admin/bookings", icon: Calendar, label: "Quản lý đặt sân" },
     { path: "/admin/payments", icon: CreditCard, label: "Quản lý thanh toán" },
     { path: "/admin/users", icon: Users, label: "Quản lý người dùng" },

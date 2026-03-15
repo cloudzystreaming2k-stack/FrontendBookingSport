@@ -26,6 +26,7 @@ import { AdminPromotions } from "./pages/admin/AdminPromotions";
 import { AdminReviews } from "./pages/admin/AdminReviews";
 import { AdminNews } from "./pages/admin/AdminNews";
 import { AdminCourtTypes } from "./pages/admin/AdminCourtTypes";
+import { AdminFacilities } from "./pages/admin/AdminFacilities";
 
 export const router = createBrowserRouter([
   {
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
       { index: true, Component: AdminDashboard },
       { path: "courts", Component: AdminCourts },
       { path: "court-types", Component: AdminCourtTypes },
+      { path: "facilities", Component: AdminFacilities },
       { path: "bookings", Component: AdminBookings },
       { path: "payments", Component: AdminPayments },
       { path: "users", Component: AdminUsers },

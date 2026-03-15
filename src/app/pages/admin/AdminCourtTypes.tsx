@@ -30,23 +30,11 @@ interface CourtTypeItem {
 }
 
 // ─── Constants ────────────────────────────────────────────────────
-const COLOR_OPTIONS = [
-  { label: "Cam", value: "bg-orange-500" },
-  { label: "Xanh lá", value: "bg-green-500" },
-  { label: "Đỏ", value: "bg-red-500" },
-  { label: "Vàng", value: "bg-yellow-500" },
-  { label: "Xanh dương", value: "bg-blue-500" },
-  { label: "Tím", value: "bg-purple-500" },
-  { label: "Hồng", value: "bg-pink-500" },
-  { label: "Xanh ngọc", value: "bg-teal-500" },
-];
-
-const ICON_OPTIONS = ["🏓", "🏸", "🏀", "🎾", "🏐", "⚽", "🏈", "🥊", "🏊", "🤸", "🏋️", "🎯"];
 
 const defaultForm = {
   name: "",
   icon: "🏓",
-  color: "bg-blue-500",
+  color: "#3b82f6", // Default blue hex
   minPlayers: 2,
   maxPlayers: 4,
 };
@@ -227,13 +215,17 @@ export function AdminCourtTypes() {
               className="border-0 shadow-sm overflow-hidden transition-shadow hover:shadow-md"
             >
               {/* Color bar */}
-              <div className={`h-2 ${ct.color}`} />
+              <div
+                className={`h-2 ${ct.color?.startsWith('bg-') ? ct.color : 'bg-gray-200'}`}
+                style={ct.color?.startsWith('#') || ct.color?.startsWith('rgb') ? { backgroundColor: ct.color } : {}}
+              />
               <CardContent className="p-5">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-12 h-12 rounded-xl ${ct.color} flex items-center justify-center text-2xl shadow-sm`}
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm ${ct.color?.startsWith('bg-') ? ct.color : 'bg-gray-100'}`}
+                      style={ct.color?.startsWith('#') || ct.color?.startsWith('rgb') ? { backgroundColor: ct.color } : {}}
                     >
                       {ct.icon}
                     </div>
@@ -311,51 +303,50 @@ export function AdminCourtTypes() {
               />
             </div>
 
-            {/* Icon picker */}
+            {/* Icon input */}
             <div className="space-y-2">
-              <Label>Biểu tượng (Icon)</Label>
-              <div className="flex flex-wrap gap-2">
-                {ICON_OPTIONS.map((icon) => (
-                  <button
-                    key={icon}
-                    type="button"
-                    onClick={() => setForm({ ...form, icon })}
-                    className={`w-10 h-10 text-xl rounded-lg border-2 transition-all ${form.icon === icon
-                      ? "border-blue-500 bg-blue-50 scale-110"
-                      : "border-gray-200 hover:border-gray-300"
-                      }`}
-                  >
-                    {icon}
-                  </button>
-                ))}
-              </div>
+              <Label htmlFor="ct-icon">Biểu tượng (Icon - Text/Emoji)</Label>
+              <Input
+                id="ct-icon"
+                value={form.icon}
+                onChange={(e) => setForm({ ...form, icon: e.target.value })}
+                placeholder="VD: 🏓 hoặc Cầu lông..."
+              />
             </div>
 
-            {/* Color picker */}
+            {/* Color input */}
             <div className="space-y-2">
-              <Label>Màu sắc</Label>
-              <div className="flex flex-wrap gap-2">
-                {COLOR_OPTIONS.map((c) => (
-                  <button
-                    key={c.value}
-                    type="button"
-                    onClick={() => setForm({ ...form, color: c.value })}
-                    title={c.label}
-                    className={`w-8 h-8 rounded-full ${c.value} transition-transform ${form.color === c.value
-                      ? "ring-2 ring-offset-2 ring-blue-500 scale-110"
-                      : "hover:scale-105"
-                      }`}
+              <Label htmlFor="ct-color">Màu sắc (Chọn màu hoặc nhập mã HEX)</Label>
+              <div className="flex gap-3">
+                <div className="relative w-12 h-10 shrink-0 rounded-lg overflow-hidden border border-gray-300 shadow-sm">
+                  <input
+                    type="color"
+                    id="ct-color-picker"
+                    value={form.color?.startsWith('#') ? form.color : '#3b82f6'}
+                    onChange={(e) => setForm({ ...form, color: e.target.value })}
+                    className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer"
                   />
-                ))}
+                </div>
+                <Input
+                  id="ct-color"
+                  value={form.color}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                  placeholder="VD: #3b82f6"
+                  className="flex-1 font-mono uppercase"
+                />
               </div>
               {/* Preview */}
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-3 mt-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
                 <div
-                  className={`w-10 h-10 rounded-xl ${form.color} flex items-center justify-center text-xl`}
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm ${form.color?.startsWith('bg-') ? form.color : 'bg-gray-200'}`}
+                  style={form.color?.startsWith('#') || form.color?.startsWith('rgb') ? { backgroundColor: form.color } : {}}
                 >
-                  {form.icon}
+                  {form.icon || "❓"}
                 </div>
-                <span className="text-sm text-gray-500">Xem trước biểu tượng</span>
+                <div className="text-sm">
+                  <p className="font-semibold text-gray-900">Xem trước hiển thị</p>
+                  <p className="text-gray-500">Màu và Icon khi lên giao diện</p>
+                </div>
               </div>
             </div>
 

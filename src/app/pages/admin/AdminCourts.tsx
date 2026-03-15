@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Plus, Pencil, Trash2, Search, RefreshCw, Loader2,
   Building2, Users, Clock, ImageIcon, X, CheckCircle,
-  AlertTriangle,
+  AlertTriangle, FilterX,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -16,6 +16,7 @@ import {
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
+import { RichTextEditor } from "../../components/ui/RichTextEditor";
 import { Badge } from "../../components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -33,6 +34,12 @@ interface CourtTypeRef {
   maxPlayers: number;
 }
 
+interface FacilityItem {
+  _id: string;
+  name: string;
+  icon: string;
+}
+
 interface Court {
   _id: string;
   name: string;
@@ -48,7 +55,7 @@ interface Court {
   status: "active" | "maintenance";
   images: string[];
   mainImage?: string;
-  facilities: string[];
+  facilities: FacilityItem[] | any[];
   createdAt: string;
 }
 
@@ -65,7 +72,7 @@ interface CourtForm {
   pricingMorning: number;
   pricingAfternoon: number;
   pricingEvening: number;
-  facilities: string;
+  facilities: string[];
   status: "active" | "maintenance";
 }
 
@@ -82,7 +89,7 @@ const defaultForm: CourtForm = {
   pricingMorning: 0,
   pricingAfternoon: 0,
   pricingEvening: 0,
-  facilities: "",
+  facilities: [],
   status: "active",
 };
 
@@ -97,6 +104,7 @@ const DISTRICTS = [
 export function AdminCourts() {
   const [courts, setCourts] = useState<Court[]>([]);
   const [courtTypes, setCourtTypes] = useState<CourtTypeRef[]>([]);
+  const [facilities, setFacilities] = useState<FacilityItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -127,12 +135,14 @@ export function AdminCourts() {
       if (statusFilter !== "all") params.status = statusFilter;
       if (searchQuery) params.search = searchQuery;
 
-      const [courtsRes, typesRes] = await Promise.all([
+      const [courtsRes, typesRes, facilitiesRes] = await Promise.all([
         api.get<Court[]>("/admin/courts", { params }),
         api.get<CourtTypeRef[]>("/admin/court-types"),
+        api.get<FacilityItem[]>("/admin/facilities"),
       ]);
       setCourts(courtsRes.data);
       setCourtTypes(typesRes.data);
+      setFacilities(facilitiesRes.data);
     } catch {
       toast.error("Không thể tải dữ liệu.");
     } finally {
@@ -193,7 +203,7 @@ export function AdminCourts() {
       pricingMorning: court.pricing.morning,
       pricingAfternoon: court.pricing.afternoon,
       pricingEvening: court.pricing.evening,
-      facilities: court.facilities.join(", "),
+      facilities: court.facilities?.map(f => typeof f === 'object' ? f._id : f) || [],
       status: court.status,
     });
     setImageFiles([]);
@@ -266,6 +276,12 @@ export function AdminCourts() {
     }
   };
 
+  const clearFilters = () => {
+    setSearchQuery("");
+    setTypeFilter("all");
+    setStatusFilter("all");
+  };
+
   const fmt = (n: number) => n.toLocaleString("vi-VN") + "đ";
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -321,6 +337,15 @@ export function AdminCourts() {
           <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
           Làm mới
         </Button>
+        <Button 
+          variant="outline" 
+          onClick={clearFilters}
+          disabled={isLoading || (!searchQuery && typeFilter === "all" && statusFilter === "all")}
+          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+        >
+          <FilterX className="w-4 h-4 mr-2" />
+          Xóa bộ lọc
+        </Button>
       </div>
 
       {/* Table */}
@@ -341,7 +366,9 @@ export function AdminCourts() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    <th className="py-3 px-4 text-left">Sân</th>
+                    <th className="py-3 px-4 text-left">Ảnh</th>
+                    <th className="py-3 px-4 text-left">Tên sân</th>
+                    <th className="py-3 px-4 text-left">Mã sân</th>
                     <th className="py-3 px-4 text-left">Loại</th>
                     <th className="py-3 px-4 text-left">Địa chỉ</th>
                     <th className="py-3 px-4 text-left">Giờ mở cửa</th>
@@ -355,26 +382,44 @@ export function AdminCourts() {
                 </thead>
                 <tbody>
                   {courts.map((court) => (
-                    <tr key={court._id} className="border-b hover:bg-gray-50 transition-colors">
-                      {/* Ảnh + Tên */}
+                    <tr 
+                      key={court._id} 
+                      className="border-b hover:bg-gray-50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        const selection = window.getSelection();
+                        if (selection && selection.toString().length > 0) {
+                          return; // Ignore click if user is selecting text
+                        }
+                        openEdit(court);
+                      }}
+                    >
+                      {/* Ảnh */}
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          {court.mainImage || court.images?.[0] ? (
-                            <img
-                              src={court.mainImage || court.images[0]}
-                              alt={court.name}
-                              className="w-55 h-30 object-cover rounded-lg shrink-0"
-                            />
-                          ) : (
-                            <div className="w-14 h-14 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
-                              <ImageIcon className="w-6 h-6 text-blue-300" />
-                            </div>
-                          )}
-                          <div>
-                            <p className="font-semibold text-gray-900">{court.name}</p>
-                            {court.code && <p className="text-xs text-gray-400 font-mono">{court.code}</p>}
+                        {court.mainImage || court.images?.[0] ? (
+                          <img
+                            src={court.mainImage || court.images[0]}
+                            alt={court.name}
+                            className="w-25 h-25 object-cover rounded-lg shrink-0 border border-gray-100 shadow-sm"
+                          />
+                        ) : (
+                          <div className="w-25 h-25 bg-blue-50 rounded-lg flex items-center justify-center shrink-0 border border-blue-100">
+                            <ImageIcon className="w-5 h-5 text-blue-300" />
                           </div>
-                        </div>
+                        )}
+                      </td>
+                      {/* Tên sân */}
+                      <td className="py-3 px-4">
+                        <p className="font-semibold text-gray-900">{court.name}</p>
+                      </td>
+                      {/* Mã sân */}
+                      <td className="py-3 px-4">
+                        {court.code ? (
+                          <span className="font-mono text-sm text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-200">
+                            {court.code}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
@@ -414,8 +459,8 @@ export function AdminCourts() {
                       <td className="py-3 px-4">
                         <div className="flex flex-wrap gap-1 max-w-[150px]">
                           {court.facilities?.length > 0 ? court.facilities.map((f, i) => (
-                            <span key={i} className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded-md border border-gray-200 whitespace-nowrap">
-                              {f}
+                            <span key={i} className="px-1.5 py-0.5 bg-gray-100 text-gray-700 text-[11px] rounded flex items-center gap-1 font-medium border border-gray-200 whitespace-nowrap">
+                              {typeof f === 'object' ? `${f.icon} ${f.name}` : f}
                             </span>
                           )) : (
                             <span className="text-xs text-gray-400">Không có</span>
@@ -436,7 +481,10 @@ export function AdminCourts() {
                               ? "bg-green-100 text-green-700 hover:bg-green-100 cursor-pointer"
                               : "bg-yellow-100 text-yellow-700 hover:bg-yellow-100 cursor-pointer"
                           }
-                          onClick={() => handleToggleStatus(court)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleStatus(court);
+                          }}
                           title="Click để đổi trạng thái"
                         >
                           {court.status === "active" ? "Hoạt động" : "Bảo trì"}
@@ -447,14 +495,20 @@ export function AdminCourts() {
                         <div className="flex items-center gap-1">
                           <Button
                             variant="ghost" size="sm"
-                            onClick={() => openEdit(court)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEdit(court);
+                            }}
                             className="text-blue-600 hover:bg-blue-50"
                           >
                             <Pencil className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost" size="sm"
-                            onClick={() => setDeleteTarget(court)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget(court);
+                            }}
                             className="text-red-600 hover:bg-red-50"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -472,7 +526,7 @@ export function AdminCourts() {
 
       {/* ── Dialog Thêm/Sửa ──────────────────────────────────────────────────── */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+       <DialogContent className="!w-[95vw] !max-w-[1300px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingCourt ? "Chỉnh sửa sân" : "Thêm sân mới"}</DialogTitle>
             <DialogDescription>
@@ -588,15 +642,54 @@ export function AdminCourts() {
             </div>
 
             {/* Tiện ích */}
-            <div className="space-y-1.5">
-              <Label>Tiện ích (cách nhau bằng dấu phẩy)</Label>
-              <Input value={form.facilities} onChange={(e) => setForm({ ...form, facilities: e.target.value })} placeholder="VD: Wifi, Gửi xe, Căng tin, Phòng tắm" />
+            <div className="space-y-2">
+              <Label>Tiện ích bổ sung</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                {facilities.map((fac) => {
+                  const isSelected = form.facilities.includes(fac._id);
+                  return (
+                    <label
+                      key={fac._id}
+                      className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all border ${
+                        isSelected 
+                          ? "bg-white border-blue-200 shadow-sm" 
+                          : "border-transparent hover:bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        checked={isSelected}
+                        onChange={() => {
+                          setForm(prev => ({
+                            ...prev,
+                            facilities: prev.facilities.includes(fac._id)
+                              ? prev.facilities.filter(id => id !== fac._id)
+                              : [...prev.facilities, fac._id]
+                          }));
+                        }}
+                      />
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{fac.icon}</span>
+                        <span className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis">{fac.name}</span>
+                      </div>
+                    </label>
+                  );
+                })}
+                {facilities.length === 0 && (
+                  <p className="text-xs text-gray-400 col-span-full">Chưa có tiện ích nào trong hệ thống, hãy thêm ở mục "Tiện Ích".</p>
+                )}
+              </div>
             </div>
 
             {/* Mô tả */}
             <div className="space-y-1.5">
               <Label>Mô tả</Label>
-              <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Mô tả về sân..." rows={3} />
+              <RichTextEditor
+                content={form.description}
+                onChange={(html) => setForm({ ...form, description: html })}
+                placeholder="Mô tả chi tiết về sân, dịch vụ đi kèm, quy định đặc biệt..."
+              />
             </div>
 
             {/* Upload ảnh */}
