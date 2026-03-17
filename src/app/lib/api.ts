@@ -54,7 +54,9 @@ api.interceptors.response.use(
    async (error) => {
       const originalRequest: InternalAxiosRequestConfig = error.config;
 
-      if (error.response?.status === 401 && !originalRequest._retry) {
+      const isAuthUrl = originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/register') || originalRequest.url?.includes('/auth/google');
+
+      if (error.response?.status === 401 && !originalRequest._retry && !isAuthUrl) {
          if (isRefreshing) {
             return new Promise((resolve, reject) => {
                failedQueue.push({ resolve, reject });

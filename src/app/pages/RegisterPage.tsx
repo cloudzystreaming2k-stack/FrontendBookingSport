@@ -6,13 +6,16 @@ import { Label } from "../components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Checkbox } from "../components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { useAuth } from "../contexts/AuthContext";
-import { Eye, EyeOff, Lock, Mail, User as UserIcon, Phone, UserPlus } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, User as UserIcon, Phone, UserPlus, Calendar } from "lucide-react";
 import { toast } from "sonner";
+import { useGoogleLogin } from "@react-oauth/google";
+import { GoogleCompleteProfileModal } from "../components/auth/GoogleCompleteProfileModal";
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, googleLogin } = useAuth();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -20,16 +23,19 @@ export function RegisterPage() {
     phone: "",
     password: "",
     confirmPassword: "",
+    gender: "",
+    dateOfBirth: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showCompleteProfile, setShowCompleteProfile] = useState(false);
 
   const validateForm = () => {
-    if (!formData.name || !formData.email || !formData.phone || !formData.password) {
-      setError("Vui lòng nhập đầy đủ thông tin");
+    if (!formData.name || !formData.email || !formData.phone || !formData.password || !formData.gender || !formData.dateOfBirth) {
+      setError("Vui lòng nhập đầy đủ thông tin (Kể cả ngày sinh, giới tính)");
       return false;
     }
 
@@ -77,7 +83,9 @@ export function RegisterPage() {
         formData.name,
         formData.email,
         formData.password,
-        formData.phone
+        formData.phone,
+        formData.gender,
+        formData.dateOfBirth
       );
       toast.success("Đăng ký thành công! Chào mừng bạn đến với SportBooking!");
       navigate("/", { replace: true });
@@ -95,9 +103,36 @@ export function RegisterPage() {
     setError(""); // Clear error when user types
   };
 
-  const handleGoogleSignup = () => {
-    // Mock Google signup - in production, this would redirect to Google OAuth
-    toast.info("Chức năng đăng ký với Google đang được phát triển");
+  const handleGoogleSignup = async (tokenResponse: any) => {
+    if (!tokenResponse.access_token) return;
+    setLoading(true);
+    try {
+      const { isNew } = await googleLogin(tokenResponse.access_token);
+      if (isNew) {
+        setShowCompleteProfile(true);
+      } else {
+        toast.success("Đăng nhập bằng Google thành công!");
+        navigate("/");
+      }
+    } catch (err: any) {
+      setError(err.message || "Đăng ký Google thất bại.");
+      toast.error("Đăng ký Google thất bại.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signupWithGoogle = useGoogleLogin({
+    onSuccess: handleGoogleSignup,
+    onError: () => {
+      setError("Đăng ký Google thất bại. Vui lòng thử lại.");
+      toast.error("Đăng ký Google thất bại.");
+    }
+  });
+
+  const handleFacebookSignup = () => {
+    // Mock Facebook signup - in production, this would redirect to Facebook OAuth
+    toast.info("Chức năng đăng ký với Facebook đang được phát triển");
   };
 
   return (
@@ -165,6 +200,38 @@ export function RegisterPage() {
                   className="pl-10"
                   disabled={loading}
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="gender">Giới tính</Label>
+                <Select value={formData.gender} onValueChange={(value) => handleChange("gender", value)} disabled={loading}>
+                  <SelectTrigger className="w-full h-10">
+                    <SelectValue placeholder="Chọn" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Nam</SelectItem>
+                    <SelectItem value="female">Nữ</SelectItem>
+                    <SelectItem value="other">Khác</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dateOfBirth">Ngày sinh</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="dateOfBirth"
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={(e) => handleChange("dateOfBirth", e.target.value)}
+                    className="pl-10 h-10"
+                    disabled={loading}
+                    max={new Date().toISOString().split("T")[0]}
+                  />
+                </div>
               </div>
             </div>
 
@@ -262,7 +329,7 @@ export function RegisterPage() {
               type="button"
               variant="outline"
               className="w-full"
-              onClick={handleGoogleSignup}
+              onClick={() => signupWithGoogle()}
               disabled={loading}
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -285,6 +352,21 @@ export function RegisterPage() {
               </svg>
               Đăng ký với Google
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleFacebookSignup}
+              disabled={loading}
+            >
+              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
+                  fill="#1877F2"
+                />
+              </svg>
+              Đăng ký với Facebook
+            </Button>
           </CardContent>
         </form>
         <CardFooter className="flex flex-col space-y-4">
@@ -304,6 +386,15 @@ export function RegisterPage() {
           </div>
         </CardFooter>
       </Card>
+
+      <GoogleCompleteProfileModal
+        open={showCompleteProfile}
+        onCompleted={() => {
+          setShowCompleteProfile(false);
+          toast.success("Đã hoàn thiện hồ sơ! Chào mừng bạn đến SportBooking!");
+          navigate("/");
+        }}
+      />
     </div>
   );
 }

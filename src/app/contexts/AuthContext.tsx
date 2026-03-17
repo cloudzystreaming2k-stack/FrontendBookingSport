@@ -15,7 +15,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string, phone: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string, phone: string, gender: string, dateOfBirth: string) => Promise<boolean>;
+  googleLogin: (token: string) => Promise<{ success: boolean; isNew: boolean }>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<User>) => void;
 }
@@ -65,10 +66,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: string,
     email: string,
     password: string,
-    phone: string
+    phone: string,
+    gender: string,
+    dateOfBirth: string
   ): Promise<boolean> => {
     try {
-      const { data } = await api.post("/auth/register", { name, email, password, phone });
+      const { data } = await api.post("/auth/register", { name, email, password, phone, gender, dateOfBirth });
       localStorage.setItem("accessToken", data.accessToken);
       setUser({
         _id: data._id,
@@ -80,6 +83,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error: any) {
       // Ném lỗi để LoginPage có thể đọc message cụ thể
       throw new Error(error.response?.data?.message || "Đăng ký thất bại");
+    }
+  };
+
+  const googleLogin = async (token: string): Promise<{ success: boolean; isNew: boolean }> => {
+    try {
+      const { data } = await api.post("/auth/google", { token });
+      localStorage.setItem("accessToken", data.accessToken);
+      setUser({
+        _id: data._id,
+        name: data.name,
+        email: data.email,
+        role: data.role,
+      });
+      return { success: true, isNew: !!data.isNew };
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || "Đăng nhập Google thất bại");
     }
   };
 
@@ -106,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         login,
         register,
+        googleLogin,
         logout,
         updateProfile,
       }}
