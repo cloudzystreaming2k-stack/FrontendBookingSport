@@ -17,6 +17,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string, phone: string, gender: string, dateOfBirth: string) => Promise<boolean>;
   googleLogin: (token: string) => Promise<{ success: boolean; isNew: boolean }>;
+  facebookLogin: (token: string) => Promise<{ success: boolean; isNew: boolean }>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<User>) => void;
 }
@@ -102,6 +103,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const facebookLogin = async (token: string): Promise<{ success: boolean; isNew: boolean }> => {
+    try {
+      const { data } = await api.post("/auth/facebook", { token });
+      localStorage.setItem("accessToken", data.accessToken);
+      setUser({
+        _id: data._id,
+        name: data.name,
+        email: data.email,
+        role: data.role,
+      });
+      return { success: true, isNew: !!data.isNew };
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || "Đăng nhập Facebook thất bại");
+    }
+  };
+
   const logout = async () => {
     try {
       await api.post("/auth/logout");
@@ -126,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         googleLogin,
+        facebookLogin,
         logout,
         updateProfile,
       }}
