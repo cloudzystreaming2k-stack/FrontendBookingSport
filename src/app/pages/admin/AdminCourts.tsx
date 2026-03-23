@@ -24,6 +24,19 @@ import {
 import { toast } from "sonner";
 import api from "../../lib/api";
 
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+});
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface CourtTypeRef {
   _id: string;
@@ -46,7 +59,8 @@ interface Court {
   code?: string;
   typeId: CourtTypeRef;
   address: string;
-  district: string;
+  latitude: number;
+  longitude: number;
   description?: string;
   capacity: number;
   openTime: string;
@@ -64,7 +78,8 @@ interface CourtForm {
   code: string;
   typeId: string;
   address: string;
-  district: string;
+  latitude: number;
+  longitude: number;
   description: string;
   capacity: number;
   openTime: string;
@@ -81,7 +96,8 @@ const defaultForm: CourtForm = {
   code: "",
   typeId: "",
   address: "",
-  district: "",
+  latitude: 10.762622,
+  longitude: 106.660172,
   description: "",
   capacity: 4,
   openTime: "06:00",
@@ -93,12 +109,14 @@ const defaultForm: CourtForm = {
   status: "active",
 };
 
-const DISTRICTS = [
-  "Quận 1", "Quận 2", "Quận 3", "Quận 4", "Quận 5",
-  "Quận 6", "Quận 7", "Quận 8", "Quận 9", "Quận 10",
-  "Quận 11", "Quận 12", "Bình Thạnh", "Gò Vấp", "Phú Nhuận",
-  "Tân Bình", "Tân Phú", "Thủ Đức", "Bình Tân", "Huyện khác",
-];
+function LocationPicker({ position, setPosition }: { position: [number, number], setPosition: (p: [number, number]) => void }) {
+  useMapEvents({
+    click(e) {
+      setPosition([e.latlng.lat, e.latlng.lng]);
+    },
+  });
+  return <Marker position={position} />;
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function AdminCourts() {
@@ -195,7 +213,8 @@ export function AdminCourts() {
       code: court.code || "",
       typeId: court.typeId?._id || "",
       address: court.address,
-      district: court.district,
+      latitude: court.latitude || 20.967420728054737,
+      longitude: court.longitude || 105.843186378479022,
       description: court.description || "",
       capacity: court.capacity,
       openTime: court.openTime,
@@ -215,7 +234,7 @@ export function AdminCourts() {
 
   // ─── Save ─────────────────────────────────────────────────────────────────
   const handleSave = async () => {
-    if (!form.name.trim() || !form.typeId || !form.address.trim() || !form.district) {
+    if (!form.name.trim() || !form.typeId || !form.address.trim()) {
       toast.error("Vui lòng điền đầy đủ các trường bắt buộc (*).");
       return;
     }
@@ -432,7 +451,7 @@ export function AdminCourts() {
                       {/* Địa chỉ */}
                       <td className="py-3 px-4">
                         <p className="text-sm text-gray-700 max-w-[180px] truncate">{court.address}</p>
-                        <p className="text-xs text-gray-400">{court.district}</p>
+                        <p className="text-xs text-gray-400 text-ellipsis overflow-hidden">📍 {court.latitude?.toFixed(4)}, {court.longitude?.toFixed(4)}</p>
                       </td>
                       {/* Giờ mở cửa */}
                       <td className="py-3 px-4">
@@ -564,24 +583,45 @@ export function AdminCourts() {
               </Select>
             </div>
 
-            {/* Địa chỉ & Quận */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Địa chỉ <span className="text-red-500">*</span></Label>
-                <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Số nhà, tên đường" />
+            {/* Địa chỉ */}
+            <div className="space-y-1.5">
+              <Label>Địa chỉ <span className="text-red-500">*</span></Label>
+              <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Số nhà, tên đường, khu vực..." />
+            </div>
+
+            {/* Bản đồ định vị */}
+            <div className="space-y-3 p-4 border border-blue-100 bg-blue-50/40 rounded-xl">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                <Label className="text-blue-800 font-semibold flex items-center gap-2">
+                  Tọa độ (Bản đồ) <span className="text-red-500">*</span>
+                </Label>
+                <div className="text-xs text-gray-500">
+                  <span className="font-semibold text-blue-600">Click vào bản đồ</span> để ghim điểm
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Quận/Huyện <span className="text-red-500">*</span></Label>
-                <Select value={form.district} onValueChange={(v) => setForm({ ...form, district: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn quận" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DISTRICTS.map((d) => (
-                      <SelectItem key={d} value={d}>{d}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              
+              <div className="w-full h-[400px] border border-gray-200 rounded-lg overflow-hidden shadow-inner isolate z-0 relative">
+                <MapContainer center={[form.latitude, form.longitude]} zoom={13} scrollWheelZoom={true} style={{ height: "100%", width: "100%", zIndex: 0 }}>
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <LocationPicker 
+                    position={[form.latitude, form.longitude]} 
+                    setPosition={(p) => setForm({ ...form, latitude: p[0], longitude: p[1] })} 
+                  />
+                </MapContainer>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-black-500 font-medium">Latitude (Vĩ độ)</Label>
+                  <Input readOnly disabled value={form.latitude} className="bg-white/50 border-black-200 text-black-600 shadow-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-black-500 font-medium">Longitude (Kinh độ)</Label>
+                  <Input readOnly disabled value={form.longitude} className="bg-white/50 border-black-200 text-black-600 shadow-sm" />
+                </div>
               </div>
             </div>
 

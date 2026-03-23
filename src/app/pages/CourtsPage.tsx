@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { MapPin, Star, Search } from "lucide-react";
+import { MapPin, Search, Map as MapIcon, SlidersHorizontal } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
@@ -11,232 +11,169 @@ import { mockCourts } from "../data/mockData";
 export function CourtsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("all");
-  const [selectedArea, setSelectedArea] = useState("all");
-  const [priceRange, setPriceRange] = useState([0, 500000]);
+  // const [selectedArea, setSelectedArea] = useState("all");
+  // const [priceRange, setPriceRange] = useState([0, 500000]);
 
   const filteredCourts = mockCourts.filter((court) => {
     const matchesSearch = court.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = selectedType === "all" || court.type === selectedType;
-    const matchesArea = selectedArea === "all" || court.area === selectedArea;
-    const matchesPrice =
-      court.pricing.morning >= priceRange[0] && court.pricing.evening <= priceRange[1];
-    return matchesSearch && matchesType && matchesArea && matchesPrice;
+    return matchesSearch && matchesType;
   });
 
   const courtTypes = [
-    { value: "all", label: "Tất cả" },
+    { value: "all", label: "Tất cả môn thể thao" },
     { value: "pickleball", label: "Pickleball" },
     { value: "badminton", label: "Cầu lông" },
     { value: "basketball", label: "Bóng rổ" },
     { value: "tennis", label: "Tennis" },
   ];
 
-  const areas = [
-    { value: "all", label: "Tất cả khu vực" },
-    { value: "Quận 1", label: "Quận 1" },
-    { value: "Tân Bình", label: "Tân Bình" },
-    { value: "Phú Nhuận", label: "Phú Nhuận" },
-    { value: "Thủ Đức", label: "Thủ Đức" },
-    { value: "Bình Thạnh", label: "Bình Thạnh" },
-    { value: "Quận 7", label: "Quận 7" },
-  ];
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold mb-6">Tìm Sân Thể Thao</h1>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Filters Sidebar */}
-        <aside className="lg:col-span-1">
-          <Card>
-            <CardContent className="p-5 space-y-6">
-              <div>
-                <h3 className="font-semibold mb-3">Tìm kiếm</h3>
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                  <Input
-                    placeholder="Tên sân..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-3">Loại sân</h3>
-                <div className="space-y-2">
-                  {courtTypes.map((type) => (
-                    <button
-                      key={type.value}
-                      onClick={() => setSelectedType(type.value)}
-                      className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                        selectedType === type.value
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-100 hover:bg-gray-200"
-                      }`}
-                    >
-                      {type.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-3">Khu vực</h3>
-                <Select value={selectedArea} onValueChange={setSelectedArea}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {areas.map((area) => (
-                      <SelectItem key={area.value} value={area.value}>
-                        {area.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-3">Khoảng giá</h3>
-                <div className="space-y-4">
-                  <Slider
-                    value={priceRange}
-                    onValueChange={setPriceRange}
-                    min={0}
-                    max={500000}
-                    step={10000}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>{priceRange[0].toLocaleString()}đ</span>
-                    <span>{priceRange[1].toLocaleString()}đ</span>
-                  </div>
-                </div>
-              </div>
-
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  setSearchQuery("");
-                  setSelectedType("all");
-                  setSelectedArea("all");
-                  setPriceRange([0, 500000]);
-                }}
-              >
-                Xóa bộ lọc
-              </Button>
-            </CardContent>
-          </Card>
-        </aside>
-
-        {/* Courts List */}
-        <div className="lg:col-span-3">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-gray-600">
-              Tìm thấy <span className="font-semibold">{filteredCourts.length}</span> sân
-            </p>
-            <Select defaultValue="rating">
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="rating">Đánh giá cao nhất</SelectItem>
-                <SelectItem value="price-low">Giá thấp đến cao</SelectItem>
-                <SelectItem value="price-high">Giá cao đến thấp</SelectItem>
-              </SelectContent>
-            </Select>
+    <div className="min-h-screen bg-white font-sans p-4 sm:p-6 lg:p-2">
+      <div className="w-full mx-auto bg-white border-[5px] border-[#b6d6e6] rounded-[2rem] overflow-hidden relative pb-24 shadow-[0_4px_30px_rgb(0,0,0,0.03)]">
+        {/* Top Filter Bar */}
+        <div className="bg-[#f0f8fb] border-b-[2.5px] border-[#e1eff5] sticky top-0 z-40">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-5">
+          
+          {/* Main Search Row */}
+          <div className="flex gap-3 mb-5 max-w-4xl mx-auto">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#4ba2c9]" />
+              <Input 
+                placeholder="Tìm địa điểm khác..."
+                className="w-full pl-[52px] h-12 rounded-xl border-white shadow-sm hover:shadow-md transition-shadow text-[15px] focus-visible:ring-[#4ba2c9]/30 font-medium placeholder:text-[#8daab9]"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <Button className="h-12 w-12 bg-white text-[#1a769d] hover:bg-[#eaf4f9] rounded-xl shadow-sm flex items-center justify-center shrink-0 border border-white">
+              <MapIcon className="w-5 h-5" />
+            </Button>
           </div>
 
-          <div className="space-y-4">
-            {filteredCourts.map((court) => (
-              <Card key={court.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
-                  <img
-                    src={court.images[0]}
-                    alt={court.name}
-                    className="w-full h-48 md:h-full object-cover"
-                  />
-                  <CardContent className="md:col-span-2 p-5">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h3 className="font-semibold text-xl mb-1">{court.name}</h3>
-                        <div className="flex items-center text-gray-600 text-sm">
-                          <MapPin className="w-4 h-4 mr-1" />
-                          {court.address}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                        <span className="font-semibold">{court.rating}</span>
-                        <span className="text-sm text-gray-600">({court.reviewCount})</span>
-                      </div>
-                    </div>
+          {/* Sub Filters Row */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center text-[15px] mr-auto">
+              <span className="font-extrabold text-[#111827] mr-1">{filteredCourts.length} kết quả</span> 
+              <span className="text-[#8daab9] mx-1">ở</span> 
+              <span className="font-bold text-[#1a769d] flex items-center gap-1 cursor-pointer hover:underline">
+                 <MapPin className="w-4 h-4 ml-1" />
+                 Thành phố Hồ Chí Minh
+              </span>
+            </div>
 
-                    <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                      {court.description}
-                    </p>
+            <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
+              <Select value={selectedType} onValueChange={setSelectedType}>
+                <SelectTrigger className="h-11 bg-white border-white hover:bg-gray-50 text-[#1a769d] font-bold rounded-xl px-4 shadow-sm w-[210px] shrink-0 border-0">
+                  <SelectValue placeholder="Tất cả môn thể thao" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-[#dceef7] shadow-xl">
+                  {courtTypes.map(t => <SelectItem key={t.value} value={t.value} className="font-medium cursor-pointer rounded-lg mx-1 my-1">{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
 
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {court.facilities.slice(0, 4).map((facility, index) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
-                        >
-                          {facility}
-                        </span>
-                      ))}
-                      {court.facilities.length > 4 && (
-                        <span className="px-2 py-1 text-gray-500 text-xs">
-                          +{court.facilities.length - 4} tiện ích
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-sm text-gray-600">Từ </span>
-                        <span className="text-2xl font-bold text-blue-600">
-                          {court.pricing.morning.toLocaleString()}đ
-                        </span>
-                        <span className="text-sm text-gray-600">/giờ</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <Link to={`/courts/${court.id}`}>
-                          <Button variant="outline">Xem chi tiết</Button>
-                        </Link>
-                        <Link to={`/booking/${court.id}`}>
-                          <Button>Đặt sân</Button>
-                        </Link>
-                      </div>
-                    </div>
-                  </CardContent>
-                </div>
-              </Card>
-            ))}
-
-            {filteredCourts.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-gray-600 mb-4">
-                  Không tìm thấy sân phù hợp với tiêu chí tìm kiếm
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedType("all");
-                    setSelectedArea("all");
-                    setPriceRange([0, 500000]);
-                  }}
-                >
-                  Xóa bộ lọc
-                </Button>
+              <div className="flex items-center gap-4 bg-white border-white px-5 h-11 rounded-xl shadow-sm shrink-0 min-w-[320px]">
+                <span className="text-[13px] font-bold text-[#64748b] whitespace-nowrap">Bán kính tìm kiếm:</span>
+                <Slider 
+                  defaultValue={[10]} 
+                  max={50} 
+                  step={1} 
+                  className="w-32 cursor-pointer" 
+                />
+                <span className="text-[13px] font-bold text-[#1a769d] whitespace-nowrap min-w-[40px] text-right">10 km</span>
               </div>
-            )}
+
+              <Button variant="outline" className="h-11 bg-white border-white text-[#111827] hover:bg-[#ebf4f8] hover:text-[#1a769d] rounded-xl font-bold shadow-sm px-6 shrink-0 flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4" />
+                Bộ lọc
+              </Button>
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* Grid Content */}
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 xl:gap-8">
+          {filteredCourts.map((court, index) => {
+            const mockDistance = Math.floor(Math.random() * (900 - 100 + 1)) + 100; // 100m - 900m
+            const staticDistances = [299, 312, 314, 333, 409, 471, 494, 495];
+            const dist = index < staticDistances.length ? staticDistances[index] : mockDistance;
+
+            return (
+            <Card key={court.id} className="overflow-hidden border-[#e1eff5] shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.08)] rounded-[1.5rem] transition-all duration-300 hover:-translate-y-1.5 bg-white group flex flex-col cursor-pointer">
+              <Link to={`/courts/${court.id}`} className="block relative w-full pt-[65%] overflow-hidden bg-gray-100">
+                <img
+                  src={court.images[0]}
+                  alt={court.name}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+                {/* Image top gradient for text legibility if needed */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </Link>
+
+              <CardContent className="p-6 flex flex-col flex-1">
+                <Link to={`/courts/${court.id}`} className="flex flex-col h-full flex-1">
+                  
+                  {/* Title row */}
+                  <div className="flex items-start justify-between gap-3 mb-3 shrink-0">
+                    <h3 className="font-extrabold text-[17px] text-[#111827] leading-snug line-clamp-2 group-hover:text-[#1a769d] transition-colors">{court.name}</h3>
+                    <div className="bg-[#e6f4fa] px-2 py-0.5 rounded flex shrink-0 items-center -mt-0.5">
+                      <span className="text-[12px] font-bold text-[#4ba2c9]">{dist} m</span>
+                    </div>
+                  </div>
+                  
+                  {/* Subtitle */}
+                  <p className="text-[13px] font-medium text-[#64748b] mb-4 line-clamp-2 leading-relaxed">
+                    Sân thể thao chất lượng cao tại Việt Nam
+                  </p>
+
+                  {/* Spacer to push location & price to bottom */}
+                  <div className="flex-1"></div>
+
+                  {/* Location Address */}
+                  <div className="flex items-start gap-2 text-[#8daab9] mb-4 shrink-0">
+                    <MapPin className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span className="text-[13px] font-medium line-clamp-1">{court.address}</span>
+                  </div>
+
+                  {/* Price Row */}
+                  <div className="pt-3 border-t border-dashed border-[#dceef7] flex items-center justify-between shrink-0">
+                    <div>
+                      <span className="text-[12px] font-medium text-[#8daab9]">từ </span>
+                      <span className="text-[15px] font-black text-[#4ba2c9]">
+                        {court.pricing.morning.toLocaleString()} đ
+                      </span>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-[#f4f8fb] flex items-center justify-center text-[#1a769d] group-hover:bg-[#1a769d] group-hover:text-white transition-colors">
+                      <Search className="w-3.5 h-3.5" />
+                    </div>
+                  </div>
+
+                </Link>
+              </CardContent>
+            </Card>
+          )})}
+
+          {filteredCourts.length === 0 && (
+            <div className="col-span-full text-center py-20">
+              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Search className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Không tìm thấy kết quả</h3>
+              <p className="text-gray-500 max-w-md mx-auto">
+                Rất tiếc, chúng tôi không tìm thấy sân nào phù hợp với tìm kiếm của bạn. Hãy thử thay đổi bộ lọc.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Floating Map Button is moved inside the relative container */}
+      <button className="absolute bottom-8 right-8 w-[60px] h-[60px] bg-[#1a769d] hover:bg-[#156082] text-white rounded-2xl shadow-[0_8px_30px_rgb(26,118,157,0.4)] flex items-center justify-center transition-transform hover:-translate-y-1.5 z-50 group">
+        <MapIcon className="w-6 h-6 group-hover:scale-110 transition-transform" />
+      </button>
+
       </div>
     </div>
   );

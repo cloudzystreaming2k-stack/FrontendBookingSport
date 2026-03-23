@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router";
 import { RootLayout } from "./layouts/RootLayout";
 import { AdminLayout } from "./layouts/AdminLayout";
+import { NotFound } from "./pages/NotFound";
 
 // Customer Pages
 import { HomePage } from "./pages/HomePage";
@@ -62,5 +63,9 @@ export const router = createBrowserRouter([
       { path: "reviews", Component: AdminReviews },
       { path: "news", Component: AdminNews },
     ],
+  },
+  {
+    path: "*",
+    Component: NotFound,
   },
 ]);
