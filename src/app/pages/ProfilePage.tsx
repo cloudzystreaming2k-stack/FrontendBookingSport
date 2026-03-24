@@ -22,7 +22,8 @@ export function ProfilePage() {
   }, [isAuthenticated, navigate]);
 
   const [userData, setUserData] = useState({
-    name: user?.name || "",
+    firstName: user?.firstName || "",
+    lastName: user?.lastName || "",
     email: user?.email || "",
     phone: user?.phone || "",
   });
@@ -31,7 +32,8 @@ export function ProfilePage() {
   useEffect(() => {
     if (user) {
       setUserData({
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         phone: user.phone || "",
       });
@@ -89,11 +91,12 @@ export function ProfilePage() {
 
   const handleUpdateProfile = () => {
     updateProfile({ 
-      name: userData.name, 
+      firstName: userData.firstName,
+      lastName: userData.lastName,
       email: userData.email, 
       phone: userData.phone 
     });
-    toast.success("Cập nhật thông tin thành công!");
+    toast.success("Đã cập nhật thông tin thành công!");
   };
 
   return (
@@ -109,7 +112,7 @@ export function ProfilePage() {
                 <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                   <User className="w-10 h-10 text-blue-600" />
                 </div>
-                <h3 className="font-semibold text-lg">{userData.name}</h3>
+                <h3 className="font-semibold text-lg">{userData.lastName} {userData.firstName}</h3>
                 <p className="text-sm text-gray-600">{userData.email}</p>
               </div>
 
@@ -262,13 +265,23 @@ export function ProfilePage() {
                   <CardTitle>Thông tin cá nhân</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Họ và tên</Label>
-                    <Input
-                      id="name"
-                      value={userData.name}
-                      onChange={(e) => setUserData({ ...userData, name: e.target.value })}
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Họ và đệm</Label>
+                      <Input
+                        id="lastName"
+                        value={userData.lastName}
+                        onChange={(e) => setUserData({ ...userData, lastName: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">Tên</Label>
+                      <Input
+                        id="firstName"
+                        value={userData.firstName}
+                        onChange={(e) => setUserData({ ...userData, firstName: e.target.value })}
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>

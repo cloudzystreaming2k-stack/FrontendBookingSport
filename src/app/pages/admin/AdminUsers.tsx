@@ -25,7 +25,8 @@ import { useAuth } from "../../contexts/AuthContext";
 // ─── Types ────────────────────────────────────────────────────────
 interface UserItem {
   _id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phone?: string;
   role: "user" | "admin";
@@ -61,17 +62,17 @@ export function AdminUsers() {
 
   // State Dialog tạo mới
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", phone: "", role: "user" });
+  const [createForm, setCreateForm] = useState({ firstName: "", lastName: "", email: "", password: "", phone: "", role: "user", gender: "", dateOfBirth: "" });
   const [isCreating, setIsCreating] = useState(false);
 
   // State Dialog chỉnh sửa
   const [editTarget, setEditTarget] = useState<UserItem | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", role: "user" });
+  const [editForm, setEditForm] = useState({ firstName: "", lastName: "", email: "", phone: "", role: "user" });
   const [isUpdating, setIsUpdating] = useState(false);
 
   const openEditDialog = (user: UserItem) => {
     setEditTarget(user);
-    setEditForm({ name: user.name, email: user.email, phone: user.phone || "", role: user.role });
+    setEditForm({ firstName: user.firstName, lastName: user.lastName, email: user.email, phone: user.phone || "", role: user.role });
   };
 
   // ─── Fetch Users ────────────────────────────────────────────────
@@ -108,7 +109,7 @@ export function AdminUsers() {
     const label = newRole === "admin" ? "Quản trị viên" : "Người dùng";
     try {
       await api.put(`/admin/users/${user._id}`, { role: newRole });
-      toast.success(`Đã đổi quyền "${user.name}" thành ${label}.`);
+      toast.success(`Đã đổi quyền "${user.lastName} ${user.firstName}" thành ${label}.`);
       fetchUsers();
     } catch {
       toast.error("Không thể cập nhật quyền hạn.");
@@ -121,7 +122,7 @@ export function AdminUsers() {
     setIsDeleting(true);
     try {
       await api.delete(`/admin/users/${deleteTarget._id}`);
-      toast.success(`Đã xóa tài khoản "${deleteTarget.name}".`);
+      toast.success(`Đã xóa tài khoản "${deleteTarget.lastName} ${deleteTarget.firstName}".`);
       setDeleteTarget(null);
       fetchUsers();
     } catch (err: any) {
@@ -134,14 +135,14 @@ export function AdminUsers() {
   // ─── Cập nhật User ─────────────────────────────────────────────
   const handleUpdate = async () => {
     if (!editTarget) return;
-    if (!editForm.name || !editForm.email) {
-      toast.error("Họ tên và Email không được để trống.");
+    if (!editForm.firstName.trim() || !editForm.email) {
+      toast.error("Tên và Email không được để trống.");
       return;
     }
     setIsUpdating(true);
     try {
       await api.put(`/admin/users/${editTarget._id}`, editForm);
-      toast.success(`Đã cập nhật thông tin "${editForm.name}" thành công.`);
+      toast.success(`Đã cập nhật thông tin "${editForm.lastName} ${editForm.firstName}" thành công.`);
       setEditTarget(null);
       fetchUsers();
     } catch (err: any) {
@@ -152,16 +153,16 @@ export function AdminUsers() {
   };
 
   const handleCreate = async () => {
-    if (!createForm.name || !createForm.email || !createForm.password) {
-      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc.");
+    if (!createForm.firstName.trim() || !createForm.email || !createForm.password || !createForm.gender || !createForm.dateOfBirth) {
+      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc (Họ Tên, Email, Mật khẩu, Giới tính, Ngày sinh).");
       return;
     }
     setIsCreating(true);
     try {
       await api.post("/admin/users", createForm);
-      toast.success(`Đã tạo tài khoản "${createForm.name}" thành công.`);
+      toast.success(`Đã tạo tài khoản "${createForm.lastName} ${createForm.firstName}" thành công.`);
       setShowCreateDialog(false);
-      setCreateForm({ name: "", email: "", password: "", phone: "", role: "user" });
+      setCreateForm({ firstName: "", lastName: "", email: "", password: "", phone: "", role: "user", gender: "", dateOfBirth: "" });
       fetchUsers();
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Không thể tạo tài khoản.");
@@ -289,9 +290,9 @@ export function AdminUsers() {
                       <td className="py-3 px-4 font-medium">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
-                            {user.name.charAt(0).toUpperCase()}
+                            {user.firstName.charAt(0).toUpperCase()}
                           </div>
-                          <span>{user.name}</span>
+                          <span>{user.lastName} {user.firstName}</span>
                           {user._id === currentAdmin?._id && (
                             <Badge variant="outline" className="text-xs">Bạn</Badge>
                           )}
@@ -381,7 +382,7 @@ export function AdminUsers() {
             <AlertDialogTitle>Xác nhận xóa tài khoản</AlertDialogTitle>
             <AlertDialogDescription>
               Bạn có chắc muốn xóa tài khoản của{" "}
-              <span className="font-semibold">{deleteTarget?.name}</span> (
+              <span className="font-semibold">{deleteTarget?.lastName} {deleteTarget?.firstName}</span> (
               {deleteTarget?.email})?{" "}
               <span className="text-red-600">Hành động này không thể hoàn tác.</span>
             </AlertDialogDescription>
@@ -407,14 +408,25 @@ export function AdminUsers() {
             <DialogTitle>Tạo tài khoản mới</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-1">
-              <Label htmlFor="create-name">Họ và tên <span className="text-red-500">*</span></Label>
-              <Input
-                id="create-name"
-                placeholder="Nguyễn Văn A"
-                value={createForm.name}
-                onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="create-lastName">Họ và đệm <span className="text-red-500">*</span></Label>
+                <Input
+                  id="create-lastName"
+                  placeholder="Nguyễn Văn"
+                  value={createForm.lastName}
+                  onChange={(e) => setCreateForm({ ...createForm, lastName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="create-firstName">Tên <span className="text-red-500">*</span></Label>
+                <Input
+                  id="create-firstName"
+                  placeholder="An"
+                  value={createForm.firstName}
+                  onChange={(e) => setCreateForm({ ...createForm, firstName: e.target.value })}
+                />
+              </div>
             </div>
             <div className="space-y-1">
               <Label htmlFor="create-email">Email <span className="text-red-500">*</span></Label>
@@ -435,6 +447,35 @@ export function AdminUsers() {
                 value={createForm.password}
                 onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
               />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Giới tính <span className="text-red-500">*</span></Label>
+                <Select
+                  value={createForm.gender}
+                  onValueChange={(v) => setCreateForm({ ...createForm, gender: v })}
+                >
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="Chọn" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Nam</SelectItem>
+                    <SelectItem value="female">Nữ</SelectItem>
+                    <SelectItem value="other">Khác</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="create-dob">Ngày sinh <span className="text-red-500">*</span></Label>
+                <Input
+                  id="create-dob"
+                  type="date"
+                  className="h-10"
+                  value={createForm.dateOfBirth}
+                  onChange={(e) => setCreateForm({ ...createForm, dateOfBirth: e.target.value })}
+                  max={new Date().toISOString().split("T")[0]}
+                />
+              </div>
             </div>
             <div className="space-y-1">
               <Label htmlFor="create-phone">Số điện thoại</Label>
@@ -480,13 +521,23 @@ export function AdminUsers() {
             <DialogTitle>Chỉnh sửa thông tin người dùng</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-1">
-              <Label htmlFor="edit-name">Họ và tên <span className="text-red-500">*</span></Label>
-              <Input
-                id="edit-name"
-                value={editForm.name}
-                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="edit-lastName">Họ và đệm <span className="text-red-500">*</span></Label>
+                <Input
+                  id="edit-lastName"
+                  value={editForm.lastName}
+                  onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-firstName">Tên <span className="text-red-500">*</span></Label>
+                <Input
+                  id="edit-firstName"
+                  value={editForm.firstName}
+                  onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
+                />
+              </div>
             </div>
             <div className="space-y-1">
               <Label htmlFor="edit-email">Email <span className="text-red-500">*</span></Label>

@@ -70,13 +70,13 @@ export function RootLayout() {
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm" className="hidden sm:flex items-center gap-2">
                         <User className="w-4 h-4" />
-                        <span>{user?.name}</span>
+                        <span>{user?.firstName}</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
                       <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
-                          <p className="text-sm font-medium leading-none">{user?.name}</p>
+                          <p className="text-sm font-medium leading-none">{user?.lastName} {user?.firstName}</p>
                           <p className="text-xs leading-none text-gray-500">{user?.email}</p>
                         </div>
                       </DropdownMenuLabel>

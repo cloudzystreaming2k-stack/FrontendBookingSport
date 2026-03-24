@@ -3,7 +3,8 @@ import api from "../lib/api";
 
 interface User {
   _id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phone?: string;
   role: "user" | "admin";
@@ -15,7 +16,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string, phone: string, gender: string, dateOfBirth: string) => Promise<boolean>;
+  register: (firstName: string, lastName: string, email: string, password: string, phone: string, gender: string, dateOfBirth: string) => Promise<boolean>;
   googleLogin: (token: string) => Promise<{ success: boolean; isNew: boolean }>;
   facebookLogin: (token: string) => Promise<{ success: boolean; isNew: boolean }>;
   logout: () => Promise<void>;
@@ -53,7 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("accessToken", data.accessToken);
       setUser({
         _id: data._id,
-        name: data.name,
+        firstName: data.firstName,
+        lastName: data.lastName,
         email: data.email,
         role: data.role,
       });
@@ -64,7 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (
-    name: string,
+    firstName: string,
+    lastName: string,
     email: string,
     password: string,
     phone: string,
@@ -72,17 +75,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dateOfBirth: string
   ): Promise<boolean> => {
     try {
-      const { data } = await api.post("/auth/register", { name, email, password, phone, gender, dateOfBirth });
+      const { data } = await api.post("/auth/register", { firstName, lastName, email, password, phone, gender, dateOfBirth });
       localStorage.setItem("accessToken", data.accessToken);
       setUser({
         _id: data._id,
-        name: data.name,
+        firstName: data.firstName,
+        lastName: data.lastName,
         email: data.email,
         role: data.role,
       });
       return true;
     } catch (error: any) {
-      // Ném lỗi để LoginPage có thể đọc message cụ thể
       throw new Error(error.response?.data?.message || "Đăng ký thất bại");
     }
   };
@@ -93,7 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("accessToken", data.accessToken);
       setUser({
         _id: data._id,
-        name: data.name,
+        firstName: data.firstName,
+        lastName: data.lastName,
         email: data.email,
         role: data.role,
       });
@@ -109,7 +113,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("accessToken", data.accessToken);
       setUser({
         _id: data._id,
-        name: data.name,
+        firstName: data.firstName,
+        lastName: data.lastName,
         email: data.email,
         role: data.role,
       });

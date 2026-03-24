@@ -19,7 +19,8 @@ export function RegisterPage() {
   const { register, googleLogin, facebookLogin } = useAuth();
 
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     password: "",
@@ -35,7 +36,7 @@ export function RegisterPage() {
   const [showCompleteProfile, setShowCompleteProfile] = useState(false);
 
   const validateForm = () => {
-    if (!formData.name || !formData.email || !formData.phone || !formData.password || !formData.gender || !formData.dateOfBirth) {
+    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email || !formData.phone || !formData.password || !formData.gender || !formData.dateOfBirth) {
       setError("Vui lòng nhập đầy đủ thông tin (Kể cả ngày sinh, giới tính)");
       return false;
     }
@@ -81,7 +82,8 @@ export function RegisterPage() {
     setLoading(true);
     try {
       await register(
-        formData.name,
+        formData.firstName,
+        formData.lastName,
         formData.email,
         formData.password,
         formData.phone,
@@ -170,19 +172,37 @@ export function RegisterPage() {
               </Alert>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Họ và tên</Label>
-              <div className="relative">
-                <UserIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Nguyễn Văn A"
-                  value={formData.name}
-                  onChange={(e) => handleChange("name", e.target.value)}
-                  className="pl-10"
-                  disabled={loading}
-                />
+            {/* Họ và Tên */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Họ và đệm <span className="text-red-500">*</span></Label>
+                <div className="relative">
+                  <UserIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Nguyễn Văn"
+                    value={formData.lastName}
+                    onChange={(e) => handleChange("lastName", e.target.value)}
+                    className="pl-10"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="firstName">Tên <span className="text-red-500">*</span></Label>
+                <div className="relative">
+                  <UserIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="An"
+                    value={formData.firstName}
+                    onChange={(e) => handleChange("firstName", e.target.value)}
+                    className="pl-10"
+                    disabled={loading}
+                  />
+                </div>
               </div>
             </div>
 

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router";
 import { Search, MapPin, Calendar, Star, Check, Zap, Globe, Target, CreditCard, ShieldCheck, CalendarDays, Users, Clock, Headphones, DollarSign, QrCode, BarChart3, TrendingUp, Smartphone, Mic, Layers } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -7,6 +8,7 @@ import { Card, CardContent } from "../components/ui/card";
 import { mockCourts } from "../data/mockData";
 
 export function HomePage() {
+  const [radius, setRadius] = useState(10);
   const featuredCourts = mockCourts.slice(0, 3);
 
   return (
@@ -81,12 +83,12 @@ export function HomePage() {
 
               <Card className="w-full bg-white/95 backdrop-blur-xl border border-white/50 shadow-[0_20px_50px_rgb(0,0,0,0.1)] rounded-[2rem] relative z-10 overflow-visible">
                 <CardContent className="p-8 md:p-10">
-                  <h3 className="text-lg font-black text-gray-900 mb-8">Đặt sân nhanh</h3>
+                  <h3 className="text-lg font-black text-gray-900 mb-5 text-[30px]">Đặt sân nhanh</h3>
 
                   <div className="space-y-6">
                     {/* Môn thể thao */}
                     <div>
-                      <label className="block text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-3">Chọn loại sân muốn đặt</label>
+                      <label className="block text-[15px] font-bold text-blue-600 uppercase tracking-widest mb-3">Chọn loại sân muốn đặt</label>
                       <div className="relative">
                         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
                           <Target className="w-4 h-4" />
@@ -108,7 +110,7 @@ export function HomePage() {
 
                     {/* Địa điểm */}
                     <div>
-                      <label className="block text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-3">Địa điểm</label>
+                      <label className="block text-[15px] font-bold text-blue-600 uppercase tracking-widest mb-3">Địa điểm</label>
                       <div className="relative">
                         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
                           <Search className="w-4 h-4" />
@@ -123,7 +125,7 @@ export function HomePage() {
                     {/* Bán kính */}
                     <div>
                       <div className="flex justify-between items-center mb-4">
-                        <label className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Bán kính tìm kiếm</label>
+                        <label className="text-[15px] font-bold text-blue-600 uppercase tracking-widest">Bán kính tìm kiếm</label>
                       </div>
                       <div className="flex items-center gap-4 px-2">
                         <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 shrink-0">
@@ -132,11 +134,12 @@ export function HomePage() {
                         <input
                           type="range"
                           className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                          min="1"
+                          min="0"
                           max="50"
-                          defaultValue="10"
+                          value={radius}
+                          onChange={(e) => setRadius(Number(e.target.value))}
                         />
-                        <span className="text-sm font-bold text-gray-700 shrink-0 w-10 text-right">10 km</span>
+                        <span className="text-sm font-bold text-gray-700 shrink-0 w-[44px] text-right">{radius} km</span>
                       </div>
                     </div>
 

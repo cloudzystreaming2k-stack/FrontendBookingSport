@@ -11,6 +11,7 @@ import { mockCourts } from "../data/mockData";
 export function CourtsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("all");
+  const [radius, setRadius] = useState(10);
   // const [selectedArea, setSelectedArea] = useState("all");
   // const [priceRange, setPriceRange] = useState([0, 500000]);
 
@@ -75,12 +76,14 @@ export function CourtsPage() {
               <div className="flex items-center gap-4 bg-white border-white px-5 h-11 rounded-xl shadow-sm shrink-0 min-w-[320px]">
                 <span className="text-[13px] font-bold text-[#64748b] whitespace-nowrap">Bán kính tìm kiếm:</span>
                 <Slider 
-                  defaultValue={[10]} 
+                  value={[radius]} 
+                  onValueChange={(val) => setRadius(val[0])}
+                  min={0}
                   max={50} 
                   step={1} 
                   className="w-32 cursor-pointer" 
                 />
-                <span className="text-[13px] font-bold text-[#1a769d] whitespace-nowrap min-w-[40px] text-right">10 km</span>
+                <span className="text-[13px] font-bold text-[#1a769d] whitespace-nowrap min-w-[40px] text-right">{radius} km</span>
               </div>
 
               <Button variant="outline" className="h-11 bg-white border-white text-[#111827] hover:bg-[#ebf4f8] hover:text-[#1a769d] rounded-xl font-bold shadow-sm px-6 shrink-0 flex items-center gap-2">
