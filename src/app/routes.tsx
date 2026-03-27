@@ -28,6 +28,10 @@ import { AdminReviews } from "./pages/admin/AdminReviews";
 import { AdminNews } from "./pages/admin/AdminNews";
 import { AdminCourtTypes } from "./pages/admin/AdminCourtTypes";
 import { AdminFacilities } from "./pages/admin/AdminFacilities";
+import { AdminLoginPage } from "./pages/admin/AdminLoginPage";
+import { OwnerRegisterPage } from "./pages/owner/OwnerRegisterPage";
+import { AdminOwners } from "./pages/admin/AdminOwners";
+import { GuestRoute } from "./components/GuestRoute";
 
 export const router = createBrowserRouter([
   {
@@ -35,8 +39,14 @@ export const router = createBrowserRouter([
     Component: RootLayout,
     children: [
       { index: true, Component: HomePage },
-      { path: "login", Component: LoginPage },
-      { path: "register", Component: RegisterPage },
+      // Guest-only routes: redirect về / nếu đã đăng nhập
+      {
+        Component: GuestRoute,
+        children: [
+          { path: "login", Component: LoginPage },
+          { path: "register", Component: RegisterPage },
+        ],
+      },
       { path: "courts", Component: CourtsPage },
       { path: "courts/:id", Component: CourtDetailPage },
       { path: "booking/:courtId", Component: BookingPage },
@@ -59,9 +69,17 @@ export const router = createBrowserRouter([
       { path: "bookings", Component: AdminBookings },
       { path: "payments", Component: AdminPayments },
       { path: "users", Component: AdminUsers },
+      { path: "owners", Component: AdminOwners },
       { path: "promotions", Component: AdminPromotions },
       { path: "reviews", Component: AdminReviews },
       { path: "news", Component: AdminNews },
+    ],
+  },
+  {
+    Component: GuestRoute,
+    children: [
+      { path: "/admin/login", Component: AdminLoginPage },
+      { path: "/owner/register", Component: OwnerRegisterPage },
     ],
   },
   {

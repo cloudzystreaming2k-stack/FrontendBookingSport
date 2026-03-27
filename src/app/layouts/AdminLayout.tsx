@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from "react-router";
+import { Outlet, Link, useLocation, Navigate } from "react-router";
 import { 
   LayoutDashboard, 
   MapPin, 
@@ -13,12 +13,31 @@ import {
   Home,
   Shapes,
   Link2,
+  Building2,
 } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
 
 export function AdminLayout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/admin/login" state={{ from: location }} replace />;
+  }
+
+  if (user?.role !== "admin" && user?.role !== "owner") {
+    return <Navigate to="/" replace />;
+  }
 
   const menuItems = [
     { path: "/admin", icon: LayoutDashboard, label: "Dashboard" },
@@ -28,6 +47,7 @@ export function AdminLayout() {
     { path: "/admin/bookings", icon: Calendar, label: "Quản lý đặt sân" },
     { path: "/admin/payments", icon: CreditCard, label: "Quản lý thanh toán" },
     { path: "/admin/users", icon: Users, label: "Quản lý người dùng" },
+    { path: "/admin/owners", icon: Building2, label: "Quản lý chủ sân" },
     { path: "/admin/promotions", icon: Tag, label: "Khuyến mãi" },
     { path: "/admin/reviews", icon: Star, label: "Đánh giá" },
     { path: "/admin/news", icon: Newspaper, label: "Tin tức" },

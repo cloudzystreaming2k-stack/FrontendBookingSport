@@ -542,9 +542,11 @@ export function HomePage() {
                 ))}
               </div>
 
+              <Link to="/owner/register">
               <Button className="mt-8 h-14 px-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-[16px] font-bold shadow-[0_8px_20px_rgb(37,99,235,0.3)] hover:shadow-[0_12px_25px_rgb(37,99,235,0.4)] transition-all transform hover:-translate-y-1">
-                Liên hệ đăng ký đối tác
+                Đăng ký chủ sân
               </Button>
+              </Link>
             </div>
 
             {/* Right side */}

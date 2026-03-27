@@ -7,7 +7,7 @@ interface User {
   lastName: string;
   email: string;
   phone?: string;
-  role: "user" | "admin";
+  role: "user" | "admin" | "owner";
   avatar?: string;
 }
 
@@ -15,7 +15,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, throwError?: boolean) => Promise<boolean>;
   register: (firstName: string, lastName: string, email: string, password: string, phone: string, gender: string, dateOfBirth: string) => Promise<boolean>;
   googleLogin: (token: string) => Promise<{ success: boolean; isNew: boolean }>;
   facebookLogin: (token: string) => Promise<{ success: boolean; isNew: boolean }>;
@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initAuth();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string, throwError = false): Promise<boolean> => {
     try {
       const { data } = await api.post("/auth/login", { email, password });
       // Lưu Access Token vào localStorage, Refresh Token được lưu vào Cookie bởi Server
@@ -58,9 +58,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         lastName: data.lastName,
         email: data.email,
         role: data.role,
+        avatar: data.avatar,
       });
       return true;
-    } catch {
+    } catch (error: any) {
+      if (throwError) throw error;
       return false;
     }
   };
