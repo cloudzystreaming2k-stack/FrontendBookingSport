@@ -6,12 +6,15 @@ import { useAuth } from "../contexts/AuthContext";
  * Nếu đã đăng nhập sẽ redirect về trang chủ.
  */
 export function GuestRoute() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
 
   // Chờ AuthContext khởi tạo xong để tránh nhảy redirect sai
   if (isLoading) return null;
 
   if (isAuthenticated) {
+    if (user?.role === "admin" || user?.role === "owner") {
+      return <Navigate to="/admin" replace />;
+    }
     return <Navigate to="/" replace />;
   }
 

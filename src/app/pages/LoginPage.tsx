@@ -5,8 +5,16 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Alert, AlertDescription } from "../components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from "../components/ui/dialog";
 import { useAuth } from "../contexts/AuthContext";
-import { Eye, EyeOff, Lock, Mail, LogIn } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, LogIn, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useGoogleLogin } from "@react-oauth/google";
 import { GoogleCompleteProfileModal } from "../components/auth/GoogleCompleteProfileModal";
@@ -23,6 +31,7 @@ export function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showCompleteProfile, setShowCompleteProfile] = useState(false);
+  const [showInactiveModal, setShowInactiveModal] = useState(false);
 
   // Get redirect path from location state
   const from = (location.state as any)?.from?.pathname || "/";
@@ -38,7 +47,8 @@ export function LoginPage() {
 
     setLoading(true);
     try {
-      const success = await login(email, password);
+      // Pass `true` as the 3rd argument to throw errors when catching HTTP requests
+      const success = await login(email, password, true);
       if (success) {
         toast.success("Đăng nhập thành công!");
         navigate(from, { replace: true });
@@ -48,8 +58,13 @@ export function LoginPage() {
       }
     } catch (err: any) {
       const message = err.response?.data?.message || "Đã có lỗi xảy ra. Vui lòng thử lại.";
-      setError(message);
-      toast.error(message);
+      
+      if (err.response?.status === 403 && message.toLowerCase().includes("khóa")) {
+        setShowInactiveModal(true);
+      } else {
+        setError(message);
+        toast.error(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -271,6 +286,28 @@ export function LoginPage() {
           navigate(from, { replace: true });
         }}
       />
+
+      {/* Modal Tài khoản bị khóa */}
+      <Dialog open={showInactiveModal} onOpenChange={setShowInactiveModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 mt-2">
+              <AlertCircle className="w-6 h-6 text-red-600" />
+            </div>
+            <DialogTitle className="text-center text-xl text-red-600">Tài khoản bị vô hiệu hóa</DialogTitle>
+            <DialogDescription className="text-center text-base mt-2 pt-2 text-gray-700">
+              Tài khoản của bạn đã dừng hoạt động. Bạn không thể đăng nhập vào hệ thống lúc này.
+              <br /><br />
+              Vui lòng liên hệ với Admin qua email <span className="font-semibold text-gray-900">admin@bookingsport.vn</span> hoặc Hotline <span className="font-semibold text-gray-900">1900 1234</span> để được hỗ trợ mở lại tài khoản.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center mt-6">
+            <Button onClick={() => setShowInactiveModal(false)} className="bg-red-600 hover:bg-red-700 w-full sm:w-auto px-8">
+              Đã hiểu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

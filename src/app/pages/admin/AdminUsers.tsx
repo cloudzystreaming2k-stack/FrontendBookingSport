@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Trash2, ShieldCheck, ShieldOff, Search, Plus,
-  RefreshCw, Users, UserCog, Loader2, Pencil
+  RefreshCw, Users, UserCog, Loader2, Pencil, Lock, Unlock
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -31,6 +31,7 @@ interface UserItem {
   phone?: string;
   role: "user" | "admin";
   createdAt: string;
+  isActive: boolean;
 }
 
 interface UsersResponse {
@@ -107,12 +108,48 @@ export function AdminUsers() {
     }
     const newRole = user.role === "admin" ? "user" : "admin";
     const label = newRole === "admin" ? "Quản trị viên" : "Người dùng";
+    
+    // Cập nhật Optimistic Update vào UI lập tức
+    setUsers((prevUsers) => prevUsers.map(u => 
+      u._id === user._id ? { ...u, role: newRole } : u
+    ));
+
     try {
       await api.put(`/admin/users/${user._id}`, { role: newRole });
       toast.success(`Đã đổi quyền "${user.lastName} ${user.firstName}" thành ${label}.`);
-      fetchUsers();
     } catch {
+      // Revert lại nếu Server ném lỗi
+      setUsers((prevUsers) => prevUsers.map(u => 
+        u._id === user._id ? { ...u, role: user.role } : u
+      ));
       toast.error("Không thể cập nhật quyền hạn.");
+    }
+  };
+
+  // ─── Đổi Trạng Thái Hoạt Động ─────────────────────────────────────
+  const handleToggleStatus = async (user: UserItem) => {
+    if (user._id === currentAdmin?._id) {
+      toast.error("Không thể thay đổi trạng thái của chính mình.");
+      return;
+    }
+    
+    // Lưu lại trạng thái cũ
+    const previousToggleState = user.isActive !== false;
+    
+    // Cập nhật Optimistic Update vào UI lập tức
+    setUsers((prevUsers) => prevUsers.map(u => 
+      u._id === user._id ? { ...u, isActive: !previousToggleState } : u
+    ));
+
+    try {
+      const { data } = await api.patch(`/admin/users/${user._id}/status`);
+      toast.success(data.message);
+    } catch (error: any) {
+      // Revert lại nếu Server báo lỗi
+      setUsers((prevUsers) => prevUsers.map(u => 
+        u._id === user._id ? { ...u, isActive: previousToggleState } : u
+      ));
+      toast.error(error.response?.data?.message || "Lỗi khi cập nhật trạng thái");
     }
   };
 
@@ -266,6 +303,7 @@ export function AdminUsers() {
                   <th className="text-left py-3 px-4 font-semibold text-gray-600">Email</th>
                   <th className="text-left py-3 px-4 font-semibold text-gray-600">Số điện thoại</th>
                   <th className="text-left py-3 px-4 font-semibold text-gray-600">Vai trò</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-600">Trạng thái</th>
                   <th className="text-left py-3 px-4 font-semibold text-gray-600">Ngày đăng ký</th>
                   <th className="text-right py-3 px-4 font-semibold text-gray-600">Hành động</th>
                 </tr>
@@ -308,6 +346,14 @@ export function AdminUsers() {
                           {user.role === "admin" ? "Quản trị viên" : "Khách hàng"}
                         </Badge>
                       </td>
+                      <td className="py-3 px-4">
+                        <Badge
+                          variant={user.isActive !== false ? "default" : "destructive"}
+                          className={user.isActive !== false ? "bg-green-600" : ""}
+                        >
+                          {user.isActive !== false ? "Hoạt động" : "Đã khóa"}
+                        </Badge>
+                      </td>
                       <td className="py-3 px-4 text-gray-500">
                         {new Date(user.createdAt).toLocaleDateString("vi-VN")}
                       </td>
@@ -326,6 +372,17 @@ export function AdminUsers() {
                             ) : (
                               <ShieldCheck className="w-4 h-4 text-green-600" />
                             )}
+                          </Button>
+                          {/* Nút Khóa/Mở khóa */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            title={user.isActive !== false ? "Khóa tài khoản" : "Mở khóa tài khoản"}
+                            onClick={() => handleToggleStatus(user)}
+                            disabled={user._id === currentAdmin?._id}
+                            className={user.isActive !== false ? "text-orange-600 hover:text-orange-700 hover:border-orange-300" : "text-green-600 hover:text-green-700 hover:border-green-300"}
+                          >
+                            {user.isActive !== false ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
                           </Button>
                           {/* Nút chỉnh sửa */}
                           <Button

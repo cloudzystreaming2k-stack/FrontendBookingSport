@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router";
 import { RootLayout } from "./layouts/RootLayout";
 import { AdminLayout } from "./layouts/AdminLayout";
+import { OwnerLayout } from "./layouts/OwnerLayout";
 import { NotFound } from "./pages/NotFound";
 
 // Customer Pages
@@ -30,6 +31,7 @@ import { AdminCourtTypes } from "./pages/admin/AdminCourtTypes";
 import { AdminFacilities } from "./pages/admin/AdminFacilities";
 import { AdminLoginPage } from "./pages/admin/AdminLoginPage";
 import { OwnerRegisterPage } from "./pages/owner/OwnerRegisterPage";
+import { OwnerDashboard } from "./pages/owner/OwnerDashboard";
 import { AdminOwners } from "./pages/admin/AdminOwners";
 import { GuestRoute } from "./components/GuestRoute";
 
@@ -73,6 +75,13 @@ export const router = createBrowserRouter([
       { path: "promotions", Component: AdminPromotions },
       { path: "reviews", Component: AdminReviews },
       { path: "news", Component: AdminNews },
+    ],
+  },
+  {
+    path: "/owner",
+    Component: OwnerLayout,
+    children: [
+      { index: true, Component: OwnerDashboard },
     ],
   },
   {

@@ -89,7 +89,7 @@ export function AdminLoginPage() {
           toast.success("Đăng nhập Chủ Sân thành công!", {
             description: "Chào mừng bạn đến với bảng quản lý sân"
           });
-          navigate("/admin");
+          navigate("/owner");
         }
       } catch (error: any) {
         const statusCode = error.response?.status;

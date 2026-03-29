@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation, Navigate } from "react-router";
+import { Outlet, Link, useLocation, Navigate, useNavigate } from "react-router";
 import { 
   LayoutDashboard, 
   MapPin, 
@@ -14,14 +14,36 @@ import {
   Shapes,
   Link2,
   Building2,
+  LogOut,
+  ChevronDown,
+  User,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
 export function AdminLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Đóng dropdown khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/admin/login", { replace: true });
+  };
   
   if (isLoading) {
     return (
@@ -35,7 +57,11 @@ export function AdminLayout() {
     return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 
-  if (user?.role !== "admin" && user?.role !== "owner") {
+  if (user?.role === "owner") {
+    return <Navigate to="/owner" replace />;
+  }
+
+  if (user?.role !== "admin") {
     return <Navigate to="/" replace />;
   }
 
@@ -155,8 +181,67 @@ export function AdminLayout() {
             <h1 className="text-xl font-semibold text-gray-900">
               {menuItems.find(item => item.path === location.pathname)?.label || "Dashboard"}
             </h1>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">Admin</span>
+
+            {/* User Profile Dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setDropdownOpen((v) => !v)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                {/* Avatar */}
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold">
+                  {user?.firstName?.charAt(0).toUpperCase() || "A"}
+                </div>
+                <div className="hidden sm:block text-left">
+                  <p className="text-sm font-semibold text-gray-900 leading-none">
+                    {user?.lastName} {user?.firstName}
+                  </p>
+                  {/* <p className="text-xs text-gray-500 mt-0.5">
+                    {user?.role === "admin" ? "Quản trị viên" : "Chủ sân"}
+                  </p> */}
+                </div>
+                <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {/* Dropdown Menu */}
+              {dropdownOpen && (
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
+                  {/* User info header */}
+                  {/* <div className="px-4 py-3 border-b border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold">
+                        {user?.firstName?.charAt(0).toUpperCase() || "A"}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{user?.lastName} {user?.firstName}</p>
+                        <p className="text-xs text-gray-500">{user?.email}</p>
+                      </div>
+                    </div>
+                  </div> */}
+
+                  {/* Role badge */}
+                  <div className="px-4 py-2">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                      user?.role === "admin"
+                        ? "bg-purple-100 text-purple-700"
+                        : "bg-teal-100 text-teal-700"
+                    }`}>
+                      <User className="w-3 h-3" />
+                      {user?.role === "admin" ? "Quản trị viên" : "Chủ sân"}
+                    </span>
+                  </div>
+
+                  <div className="border-t border-gray-100 mt-1 pt-1">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Đăng xuất
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>

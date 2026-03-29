@@ -23,6 +23,9 @@ import {
   FileText,
   Briefcase,
   Filter,
+  Lock,
+  Unlock,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -60,6 +63,7 @@ interface OwnerRegistration {
   accountOwner: string;
   registeredAt: string;
   status: "pending" | "approved" | "rejected";
+  isActive?: boolean;
   rejectionReason?: string;
   approvedAt?: string;
   approvedBy?: string;
@@ -86,6 +90,7 @@ export function AdminOwners() {
         gender: user.gender || "",
         dateOfBirth: user.dateOfBirth || "",
         status: user.status,
+        isActive: user.isActive !== false,
         ownerName: user.ownerInfo?.ownerName || "",
         identityNumber: user.ownerInfo?.identityNumber || "",
         businessName: user.ownerInfo?.businessName || "",
@@ -164,6 +169,49 @@ export function AdminOwners() {
       setIsDetailOpen(false);
     } catch (e: any) {
       toast.error(e.response?.data?.message || "Có lỗi xảy ra khi cập nhật");
+    }
+  };
+
+  // ─── Khóa / Mở khóa tài khoản chủ sân (Optimistic Update) ───────────────────────
+  const handleToggleActive = async (owner: OwnerRegistration) => {
+    const previousState = owner.isActive !== false;
+    
+    // Lật UI ngay lập tức (Optimistic)
+    setOwners(prev => prev.map(o =>
+      o.id === owner.id ? { ...o, isActive: !previousState } : o
+    ));
+
+    try {
+      await api.patch(`/admin/users/${owner.id}/status`);
+      toast.success(!previousState ? "Đã mở khóa tài khoản chủ sân" : "Đã khóa tài khoản chủ sân", {
+        description: `${owner.lastName} ${owner.firstName} - ${owner.businessName}`,
+      });
+    } catch (e: any) {
+      // Revert nếu lỗi
+      setOwners(prev => prev.map(o =>
+        o.id === owner.id ? { ...o, isActive: previousState } : o
+      ));
+      toast.error(e.response?.data?.message || "Có lỗi khi thay đổi trạng thái");
+    }
+  };
+
+  // ─── Đưa về chờ duyệt lại (Rollback) ───────────────────────────────────
+  const handleRollbackToPending = async (owner: OwnerRegistration) => {
+    // Optimistic: xóa khỏi danh sách tab hiện tại ngay
+    setOwners(prev => prev.map(o =>
+      o.id === owner.id ? { ...o, status: "pending" as const } : o
+    ));
+    setIsDetailOpen(false);
+
+    try {
+      await api.put(`/admin/owners/${owner.id}/status`, { status: "pending" });
+      toast.success("Đã chuyển về chờ duyệt lại", {
+        description: `${owner.lastName} ${owner.firstName} - ${owner.businessName}`,
+      });
+    } catch (e: any) {
+      // Revert nếu lỗi
+      loadOwners();
+      toast.error(e.response?.data?.message || "Có lỗi xảy ra khi rollback");
     }
   };
 
@@ -322,16 +370,6 @@ export function AdminOwners() {
             </span>
           )}
         </button>
-        <button
-          onClick={() => setActiveTab("rejected")}
-          className={`px-4 py-2 font-medium transition-colors relative ${
-            activeTab === "rejected"
-              ? "text-red-600 border-b-2 border-red-6 0"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
-        >
-          Tài khoản
-        </button>
       </div>
 
       {/* Filters */}
@@ -457,6 +495,8 @@ export function AdminOwners() {
                             <Eye className="w-4 h-4" />
                             Chi tiết
                           </Button>
+
+                          {/* Pending: Nút Duyệt và Từ chối */}
                           {owner.status === "pending" && (
                             <>
                               <Button
@@ -477,6 +517,50 @@ export function AdminOwners() {
                                 Từ chối
                               </Button>
                             </>
+                          )}
+
+                          {/* Approved: Nút Khóa/Mở khóa và Rollback */}
+                          {owner.status === "approved" && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleToggleActive(owner)}
+                                title={owner.isActive !== false ? "Khóa tài khoản" : "Mở khóa tài khoản"}
+                                className={owner.isActive !== false
+                                  ? "text-orange-600 hover:text-orange-700 hover:border-orange-300"
+                                  : "text-green-600 hover:text-green-700 hover:border-green-300"
+                                }
+                              >
+                                {owner.isActive !== false
+                                  ? <Lock className="w-4 h-4" />
+                                  : <Unlock className="w-4 h-4" />
+                                }
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRollbackToPending(owner)}
+                                title="Đưa về chờ duyệt lại"
+                                className="text-blue-600 hover:text-blue-700 hover:border-blue-300"
+                              >
+                                <RefreshCw className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
+
+                          {/* Rejected: Chỉ có Rollback */}
+                          {owner.status === "rejected" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRollbackToPending(owner)}
+                              title="Đưa về chờ duyệt lại"
+                              className="text-blue-600 hover:text-blue-700 hover:border-blue-300 flex items-center gap-1"
+                            >
+                              <RefreshCw className="w-4 h-4" />
+                              Duyệt lại
+                            </Button>
                           )}
                         </div>
                       </td>
