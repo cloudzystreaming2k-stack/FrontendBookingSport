@@ -34,6 +34,7 @@ import { OwnerRegisterPage } from "./pages/owner/OwnerRegisterPage";
 import { OwnerDashboard } from "./pages/owner/OwnerDashboard";
 import { AdminOwners } from "./pages/admin/AdminOwners";
 import { GuestRoute } from "./components/GuestRoute";
+import { AdminCourtPricing } from "./pages/admin/AdminCourtPricing";
 
 export const router = createBrowserRouter([
   {
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
       { path: "courts", Component: AdminCourts },
       { path: "court-types", Component: AdminCourtTypes },
       { path: "facilities", Component: AdminFacilities },
+      { path: "court-pricing", Component: AdminCourtPricing },
       { path: "bookings", Component: AdminBookings },
       { path: "payments", Component: AdminPayments },
       { path: "users", Component: AdminUsers },

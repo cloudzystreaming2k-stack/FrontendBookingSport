@@ -211,47 +211,49 @@ export function RootLayout() {
         <Outlet />
       </main>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="font-bold text-lg mb-4">SportBooking</h3>
-              <p className="text-gray-400 text-sm">
-                Hệ thống đặt sân thể thao trực tuyến hàng đầu Việt Nam
-              </p>
+      {/* Footer (Hidden on Search Page) */}
+      {location.pathname !== '/courts' && (
+        <footer className="bg-gray-900 text-white mt-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+              <div>
+                <h3 className="font-bold text-lg mb-4">SportBooking</h3>
+                <p className="text-gray-400 text-sm">
+                  Hệ thống đặt sân thể thao trực tuyến hàng đầu Việt Nam
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4">Liên kết</h4>
+                <ul className="space-y-2 text-sm text-gray-400">
+                  <li><Link to="/courts" className="hover:text-white">Tìm sân</Link></li>
+                  <li><Link to="/news" className="hover:text-white">Tin tức</Link></li>
+                  <li><Link to="/about" className="hover:text-white">Giới thiệu</Link></li>
+                  <li><Link to="/contact" className="hover:text-white">Liên hệ</Link></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4">Hỗ trợ</h4>
+                <ul className="space-y-2 text-sm text-gray-400">
+                  <li><a href="#" className="hover:text-white">Hướng dẫn đặt sân</a></li>
+                  <li><a href="#" className="hover:text-white">Chính sách hoàn tiền</a></li>
+                  <li><a href="#" className="hover:text-white">Liên hệ</a></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4">Liên hệ</h4>
+                <ul className="space-y-2 text-sm text-gray-400">
+                  <li>Email: support@sportbooking.vn</li>
+                  <li>Hotline: 1900 xxxx</li>
+                  <li>TP. Hồ Chí Minh, Việt Nam</li>
+                </ul>
+              </div>
             </div>
-            <div>
-              <h4 className="font-semibold mb-4">Liên kết</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><Link to="/courts" className="hover:text-white">Tìm sân</Link></li>
-                <li><Link to="/news" className="hover:text-white">Tin tức</Link></li>
-                <li><Link to="/about" className="hover:text-white">Giới thiệu</Link></li>
-                <li><Link to="/contact" className="hover:text-white">Liên hệ</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Hỗ trợ</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-white">Hướng dẫn đặt sân</a></li>
-                <li><a href="#" className="hover:text-white">Chính sách hoàn tiền</a></li>
-                <li><a href="#" className="hover:text-white">Liên hệ</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Liên hệ</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li>Email: support@sportbooking.vn</li>
-                <li>Hotline: 1900 xxxx</li>
-                <li>TP. Hồ Chí Minh, Việt Nam</li>
-              </ul>
+            <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
+              © 2026 SportBooking. All rights reserved.
             </div>
           </div>
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
-            © 2026 SportBooking. All rights reserved.
-          </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 }

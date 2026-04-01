@@ -17,6 +17,7 @@ import {
   LogOut,
   ChevronDown,
   User,
+  DollarSign,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
@@ -70,6 +71,7 @@ export function AdminLayout() {
     { path: "/admin/courts", icon: MapPin, label: "Quản lý sân" },
     { path: "/admin/court-types", icon: Shapes, label: "Loại sân" },
     { path: "/admin/facilities", icon: Link2, label: "Tiện ích" },
+    { path: "/admin/court-pricing", icon: DollarSign, label: "Cấu hình giá giờ" },
     { path: "/admin/bookings", icon: Calendar, label: "Quản lý đặt sân" },
     { path: "/admin/payments", icon: CreditCard, label: "Quản lý thanh toán" },
     { path: "/admin/users", icon: Users, label: "Quản lý người dùng" },

@@ -21,6 +21,7 @@ export interface Court {
   openingHours?: string; // Giờ mở cửa
   status: 'active' | 'maintenance';
   owner?: string; // Chủ sân
+  coordinates?: [number, number]; // [latitude, longitude]
 }
 
 export interface Booking {
@@ -158,6 +159,7 @@ export const mockCourts: Court[] = [
     openingHours: '06:00 - 22:00',
     status: 'active',
     owner: 'Lê Văn C',
+    coordinates: [10.811667, 106.66], // Tân Bình 2
   },
   {
     id: '4',
@@ -179,6 +181,7 @@ export const mockCourts: Court[] = [
     openingHours: '06:00 - 22:00',
     status: 'active',
     owner: 'Phạm Thị D',
+    coordinates: [10.803333, 106.685], // Phú Nhuận
   },
   {
     id: '5',
@@ -200,6 +203,7 @@ export const mockCourts: Court[] = [
     openingHours: '06:00 - 22:00',
     status: 'active',
     owner: 'Hoàng Minh E',
+    coordinates: [10.805, 106.743333], // Quận 2 / Thủ Đức
   },
   {
     id: '6',
