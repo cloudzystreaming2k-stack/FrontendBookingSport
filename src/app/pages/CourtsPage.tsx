@@ -153,7 +153,7 @@ export function CourtsPage() {
           <div className="flex flex-col flex-1 overflow-y-auto pb-24 relative custom-scrollbar">
             {/* Top Filter Bar */}
             <div className="bg-[#f0f8fb] border-b-[2.5px] border-[#e1eff5] sticky top-0 z-40">
-              <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-55 py-4 w-full">
+              <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-30 py-4 w-full">
               
               {/* Main Search Row */}
               <div className="flex gap-3 mb-4 w-full">
@@ -216,7 +216,7 @@ export function CourtsPage() {
             </div>
 
             {/* Grid Content */}
-            <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-55 py-8 md:py-4 w-full">
+            <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-30 py-8 md:py-4 w-full">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 xl:gap-3">
                 {filteredCourts.map((court, index) => {
                   const mockDistance = Math.floor(Math.random() * (900 - 100 + 1)) + 100; // 100m - 900m

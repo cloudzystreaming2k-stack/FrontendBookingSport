@@ -14,9 +14,18 @@ export function HomePage() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="relative pt-20 pb-12 bg-gradient-to-br from-blue-50 via-white to-blue-50/50 overflow-hidden">
+      <section className="relative pt-20 pb-12 overflow-hidden bg-white/50">
+        {/* Background Image with opacity */}
+        <div
+          className="absolute inset-0 w-full h-full object-cover bg-cover bg-center bg-no-repeat opacity-[0.9]"
+          style={{ backgroundImage: 'url(/images/hero_sports_background.png)' }}
+        ></div>
+
+        {/* Gradient Overlay để giữ được màu sắc gốc nhưng chìm ảnh xuống */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 via-white/70 to-blue-50/80 z-0"></div>
+
         {/* Glow effect */}
-        <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/3 w-[600px] h-[600px] bg-blue-300/30 rounded-full blur-[100px] -z-10 pointer-events-none"></div>
+        <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/3 w-[600px] h-[600px] bg-blue-300/40 rounded-full blur-[100px] -z-10 pointer-events-none"></div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-20">
@@ -543,9 +552,9 @@ export function HomePage() {
               </div>
 
               <Link to="/owner/register">
-              <Button className="mt-8 h-14 px-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-[16px] font-bold shadow-[0_8px_20px_rgb(37,99,235,0.3)] hover:shadow-[0_12px_25px_rgb(37,99,235,0.4)] transition-all transform hover:-translate-y-1">
-                Đăng ký chủ sân
-              </Button>
+                <Button className="mt-8 h-14 px-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-[16px] font-bold shadow-[0_8px_20px_rgb(37,99,235,0.3)] hover:shadow-[0_12px_25px_rgb(37,99,235,0.4)] transition-all transform hover:-translate-y-1">
+                  Đăng ký chủ sân
+                </Button>
               </Link>
             </div>
 
