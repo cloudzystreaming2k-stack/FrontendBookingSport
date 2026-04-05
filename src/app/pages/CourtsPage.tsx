@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router";
-import { MapPin, Search, Map as MapIcon, SlidersHorizontal, List, User, ChevronLeft, ChevronRight, Filter } from "lucide-react";
+import { MapPin, Search, Map as MapIcon, SlidersHorizontal, List, ChevronLeft, ChevronRight, Filter, Loader2 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -9,11 +9,36 @@ import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Card, CardContent } from "../components/ui/card";
 import { Slider } from "../components/ui/slider";
-import { mockCourts } from "../data/mockData";
 import api from "../lib/api";
 
 interface Province { code: number; name: string; }
 interface District { code: number; name: string; }
+
+interface ApiCourt {
+  _id: string;
+  name: string;
+  code?: string;
+  address: string;
+  images: string[];
+  mainImage?: string;
+  pricing: { morning: number; afternoon: number; evening: number };
+  typeId?: { _id: string; name: string; icon: string; color: string };
+  facilities?: { name: string; icon: string }[];
+  latitude?: number;
+  longitude?: number;
+  openTime?: string;
+  closeTime?: string;
+  rating?: number;
+  reviewCount?: number;
+  description?: string;
+}
+
+interface CourtTypeRef {
+  _id: string;
+  name: string;
+  icon: string;
+  color: string;
+}
 
 export function CourtsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -22,6 +47,12 @@ export function CourtsPage() {
   const [isMapView, setIsMapView] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
+  // Court data from API
+  const [courts, setCourts] = useState<ApiCourt[]>([]);
+  const [isLoadingCourts, setIsLoadingCourts] = useState(false);
+  const [courtTypes, setCourtTypes] = useState<CourtTypeRef[]>([]);
+  const [total, setTotal] = useState(0);
+
   // Location filter
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
@@ -29,12 +60,14 @@ export function CourtsPage() {
   const [selectedDistrict, setSelectedDistrict] = useState("all");
   const [loadingDistricts, setLoadingDistricts] = useState(false);
 
+  // Fetch provinces
   useEffect(() => {
     api.get("/locations/provinces")
       .then(res => setProvinces(res.data.data ?? []))
       .catch(() => { });
   }, []);
 
+  // Fetch districts when province changes
   useEffect(() => {
     if (selectedProvince === "all") { setDistricts([]); setSelectedDistrict("all"); return; }
     setLoadingDistricts(true);
@@ -45,32 +78,51 @@ export function CourtsPage() {
     setSelectedDistrict("all");
   }, [selectedProvince]);
 
-  // Default coordinate for Hochiminh center if courts lack coordinates
+  // Fetch court types cho dropdown
+  useEffect(() => {
+    api.get("/admin/court-types")
+      .then(res => setCourtTypes(res.data ?? []))
+      .catch(() => { });
+  }, []);
+
+  // Fetch courts khi filter thay đổi
+  useEffect(() => {
+    setIsLoadingCourts(true);
+    const params: Record<string, string> = { limit: "50" };
+    if (selectedType !== "all") params.type = selectedType;
+    if (selectedProvince !== "all") params.provinceCode = selectedProvince;
+    if (selectedDistrict !== "all") params.districtCode = selectedDistrict;
+
+    api.get("/courts", { params })
+      .then(res => {
+        setCourts(res.data.courts ?? []);
+        setTotal(res.data.total ?? 0);
+      })
+      .catch(() => { })
+      .finally(() => setIsLoadingCourts(false));
+  }, [selectedType, selectedProvince, selectedDistrict]);
+
+  // Filter client-side theo search query
+  const filteredCourts = useMemo(() => {
+    if (!searchQuery.trim()) return courts;
+    return courts.filter(c =>
+      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.address.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [courts, searchQuery]);
+
+  // Default coordinate for center map if courts lack coordinates
   const hcmCenter: [number, number] = [10.7769, 106.7009];
 
   const createCustomIcon = (index: number) => {
     return L.divIcon({
       className: 'custom-map-marker',
-      html: `<div style="background-color: #4ba2c9; color: white; width: 28px; height: 28px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: transform 0.2s;" onmouseover="this.style.backgroundColor='#FBBF24'; this.style.transform='scale(1.1)';" onmouseout="this.style.backgroundColor='#4ba2c9'; this.style.transform='scale(1)';">${index}</div>`,
+      html: `<div style="background-color: #4ba2c9; color: white; width: 28px; height: 28px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: transform 0.2s;" onmouseover="this.style.backgroundColor='#FBBF24'; this.style.transform='scale(1.1)';" onmouseout="this.style.backgroundColor='#4ba2c9'; this.style.transform='scale(1)';">` + index + `</div>`,
       iconSize: [28, 28],
       iconAnchor: [14, 14],
       popupAnchor: [0, -14]
     });
   };
-
-  const filteredCourts = mockCourts.filter((court) => {
-    const matchesSearch = court.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = selectedType === "all" || court.type === selectedType;
-    return matchesSearch && matchesType;
-  });
-
-  const courtTypes = [
-    { value: "all", label: "Tất cả môn thể thao" },
-    { value: "pickleball", label: "Pickleball" },
-    { value: "badminton", label: "Cầu lông" },
-    { value: "basketball", label: "Bóng rổ" },
-    { value: "tennis", label: "Tennis" },
-  ];
 
   return (
     <div className="h-[calc(100vh-64px)] bg-[#f8fafc] font-sans p-4 lg:p-2 sm:p-6 flex flex-col overflow-hidden">
@@ -94,6 +146,7 @@ export function CourtsPage() {
                 <div className="flex items-center justify-between text-[13px]">
                   <div>
                     <span className="font-extrabold text-[#111827] text-[14px]">{filteredCourts.length} kết quả</span>
+                    {isLoadingCourts && <Loader2 className="w-3 h-3 animate-spin text-[#4ba2c9] inline ml-1" />}
                     <span className="text-[#8daab9] mx-1">ở Thành phố Hồ Chí Minh</span>
                   </div>
                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-[#1a769d] hover:bg-[#eaf4f9]">
@@ -103,22 +156,33 @@ export function CourtsPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-3 space-y-3 z-10 custom-scrollbar">
-                {filteredCourts.map((court, idx) => (
-                  <div key={court.id} className="bg-white p-3.5 border border-[#e1eff5] hover:border-[#b6d6e6] rounded-xl cursor-pointer hover:shadow-[0_4px_12px_rgba(32,126,168,0.08)] transition-all group relative overflow-hidden">
+                {isLoadingCourts ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="bg-white p-3.5 border border-[#e1eff5] rounded-xl animate-pulse">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                      <div className="h-3 bg-gray-100 rounded w-full mb-2" />
+                      <div className="h-3 bg-gray-100 rounded w-2/3 mb-2" />
+                      <div className="h-4 bg-blue-100 rounded w-1/3" />
+                    </div>
+                  ))
+                ) : filteredCourts.map((court) => (
+                  <Link to={`/courts/${court._id}`} key={court._id} className="block bg-white p-3.5 border border-[#e1eff5] hover:border-[#b6d6e6] rounded-xl cursor-pointer hover:shadow-[0_4px_12px_rgba(32,126,168,0.08)] transition-all group relative overflow-hidden">
                     <div className="flex justify-between items-start mb-1.5 gap-2 relative z-10">
                       <h4 className="font-bold text-[14px] text-[#111827] line-clamp-2 leading-tight flex-1 group-hover:text-[#1a769d]">{court.name}</h4>
-                      <span className="bg-[#eaf4f9] text-[#4ba2c9] text-[11px] font-bold px-1.5 py-0.5 rounded shrink-0">{idx < 5 ? (299 + idx * 15) : Math.floor(Math.random() * 500) + 100} m</span>
+                      {court.typeId && (
+                        <span className="bg-[#eaf4f9] text-[#4ba2c9] text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0">{court.typeId.icon}</span>
+                      )}
                     </div>
-                    <p className="text-[#64748b] text-[12px] mb-2.5 relative z-10">Sân thể thao chất lượng cao tại Việt Nam</p>
+                    <p className="text-[#64748b] text-[12px] mb-2.5 relative z-10 line-clamp-1">{court.description || "Sân thể thao chất lượng cao"}</p>
                     <div className="flex items-center gap-2 text-[#8daab9] mb-2.5 relative z-10">
-                      <User className="w-3.5 h-3.5 shrink-0" />
+                      <MapPin className="w-3.5 h-3.5 shrink-0" />
                       <span className="text-[12px] line-clamp-1">{court.address}</span>
                     </div>
                     <div className="text-[14px] font-black text-[#4ba2c9] relative z-10">
                       <span className="text-[#8daab9] text-[11px] font-medium mr-1.5 inline-block">từ</span>
                       {court.pricing.morning.toLocaleString()} đ
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
 
@@ -149,11 +213,13 @@ export function CourtsPage() {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 {filteredCourts.map((court, idx) => {
-                  const pos = court.coordinates || [hcmCenter[0] + (Math.random() - 0.5) * 0.08, hcmCenter[1] + (Math.random() - 0.5) * 0.08];
+                  const pos: [number, number] = (court.latitude && court.longitude)
+                    ? [court.latitude, court.longitude]
+                    : [hcmCenter[0] + (Math.random() - 0.5) * 0.08, hcmCenter[1] + (Math.random() - 0.5) * 0.08];
                   return (
                     <Marker
-                      key={court.id}
-                      position={pos as [number, number]}
+                      key={court._id}
+                      position={pos}
                       icon={createCustomIcon(idx + 1)}
                     >
                       <Popup className="font-sans rounded-xl overflow-hidden border-0 shadow-lg p-0">
@@ -201,7 +267,8 @@ export function CourtsPage() {
                 {/* Sub Filters Row */}
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
                   <div className="flex items-center text-[15px] mr-auto">
-                    <span className="font-extrabold text-[#111827] mr-1">{filteredCourts.length} kết quả</span>
+                    <span className="font-extrabold text-[#111827] mr-1">{filteredCourts.length} / {total} kết quả</span>
+                    {isLoadingCourts && <Loader2 className="w-4 h-4 animate-spin text-[#4ba2c9] inline ml-1" />}
                   </div>
 
                   <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
@@ -211,7 +278,12 @@ export function CourtsPage() {
                         <SelectValue placeholder="Tất cả môn thể thao" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-[#dceef7] shadow-xl">
-                        {courtTypes.map(t => <SelectItem key={t.value} value={t.value} className="font-medium cursor-pointer rounded-lg mx-1 my-1">{t.label}</SelectItem>)}
+                        <SelectItem value="all" className="font-medium cursor-pointer rounded-lg mx-1 my-1">Tất cả môn thể thao</SelectItem>
+                        {courtTypes.map(t => (
+                          <SelectItem key={t._id} value={t._id} className="font-medium cursor-pointer rounded-lg mx-1 my-1">
+                            {t.icon} {t.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
 
@@ -273,61 +345,80 @@ export function CourtsPage() {
             {/* Grid Content */}
             <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-30 py-8 md:py-4 w-full">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 xl:gap-3">
-                {filteredCourts.map((court, index) => {
-                  const mockDistance = Math.floor(Math.random() * (900 - 100 + 1)) + 100; // 100m - 900m
-                  const staticDistances = [299, 312, 314, 333, 409, 471, 494, 495];
-                  const dist = index < staticDistances.length ? staticDistances[index] : mockDistance;
-
-                  return (
-                    <Card key={court.id} className="overflow-hidden border border-[#e1eff5] shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-[1.25rem] transition-all duration-300 hover:-translate-y-1 bg-[#fcfdfe] group flex flex-col cursor-pointer">
-                      <Link to={`/courts/${court.id}`} className="block relative w-full pt-[55%] overflow-hidden bg-gray-100">
+                {/* Skeleton khi đang loading */}
+                {isLoadingCourts ? (
+                  Array.from({ length: 8 }).map((_, i) => (
+                    <Card key={i} className="overflow-hidden border border-[#e1eff5] rounded-[1.25rem] bg-[#fcfdfe] animate-pulse">
+                      <div className="relative w-full pt-[55%] bg-gray-200" />
+                      <CardContent className="p-4">
+                        <div className="h-4 bg-gray-200 rounded w-4/5 mb-2" />
+                        <div className="h-3 bg-gray-100 rounded w-full mb-3" />
+                        <div className="h-3 bg-gray-100 rounded w-2/3 mb-3" />
+                        <div className="h-4 bg-blue-100 rounded w-1/3" />
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : filteredCourts.map((court) => (
+                  <Card key={court._id} className="overflow-hidden border border-[#e1eff5] shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-[1.25rem] transition-all duration-300 hover:-translate-y-1 bg-[#fcfdfe] group flex flex-col cursor-pointer">
+                    <Link to={`/courts/${court._id}`} className="block relative w-full pt-[55%] overflow-hidden bg-gray-100">
+                      {(court.mainImage || court.images?.[0]) ? (
                         <img
-                          src={court.images[0]}
+                          src={court.mainImage || court.images[0]}
                           alt={court.name}
                           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                         />
-                        {/* Image top gradient for text legibility if needed */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      </Link>
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#eaf4f9] to-[#dceef7]">
+                          <span className="text-4xl">{court.typeId?.icon || '🏟️'}</span>
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      {court.typeId && (
+                        <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full text-[11px] font-bold text-[#1a769d] shadow-sm">
+                          {court.typeId.icon} {court.typeId.name}
+                        </div>
+                      )}
+                    </Link>
 
-                      <CardContent className="p-4 flex flex-col flex-1">
-                        <Link to={`/courts/${court.id}`} className="flex flex-col h-full flex-1">
+                    <CardContent className="p-4 flex flex-col flex-1">
+                      <Link to={`/courts/${court._id}`} className="flex flex-col h-full flex-1">
 
-                          {/* Title row */}
-                          <div className="flex items-start justify-between gap-2 mb-2 shrink-0">
-                            <h3 className="font-extrabold text-[15px] text-[#111827] leading-snug line-clamp-2 group-hover:text-[#1a769d] transition-colors">{court.name}</h3>
-                            <div className="bg-[#eaf4f9] px-2 py-0.5 rounded flex shrink-0 items-center -mt-0.5">
-                              <span className="text-[12px] font-bold text-[#4ba2c9]">{dist} m</span>
-                            </div>
-                          </div>
+                        {/* Title row */}
+                        <div className="flex items-start justify-between gap-2 mb-2 shrink-0">
+                          <h3 className="font-extrabold text-[15px] text-[#111827] leading-snug line-clamp-2 group-hover:text-[#1a769d] transition-colors">{court.name}</h3>
+                        </div>
 
-                          {/* Subtitle */}
-                          <p className="text-[12px] font-medium text-[#64748b] mb-3 line-clamp-2 leading-relaxed">
-                            Sân thể thao chất lượng cao tại Việt Nam
-                          </p>
+                        {/* Subtitle / Description */}
+                        <p className="text-[12px] font-medium text-[#64748b] mb-3 line-clamp-2 leading-relaxed">
+                          {/* {court.description || "Sân thể thao chất lượng cao"} */}
+                          Sân thể thao chất lượng cao tại Việt Nam
+                        </p>
 
-                          {/* Spacer to push location & price to bottom */}
-                          <div className="flex-1"></div>
+                        <div className="flex-1" />
 
-                          {/* Location Address */}
-                          <div className="flex items-start gap-1.5 text-[#8daab9] mb-3 shrink-0">
-                            <User className="w-3.5 h-3.5 shrink-0 mt-[2px]" />
-                            <span className="text-[12px] font-medium line-clamp-1">{court.address}</span>
-                          </div>
+                        {/* Location Address */}
+                        <div className="flex items-start gap-1.5 text-[#8daab9] mb-3 shrink-0">
+                          <MapPin className="w-3.5 h-3.5 shrink-0 mt-[2px]" />
+                          <span className="text-[12px] font-medium line-clamp-1">{court.address}</span>
+                        </div>
 
-                          {/* Price Row */}
-                          <div className="flex items-center shrink-0">
+                        {/* Price Row */}
+                        <div className="flex items-center justify-between shrink-0">
+                          <div className="flex items-center">
                             <span className="text-[12px] font-medium text-[#8daab9] mr-1">từ </span>
                             <span className="text-[14px] font-black text-[#1a769d]">
                               {court.pricing.morning.toLocaleString()} đ
                             </span>
                           </div>
+                          {court.openTime && (
+                            <span className="text-[11px] text-[#8daab9] font-medium">{court.openTime} - {court.closeTime}</span>
+                          )}
+                        </div>
 
-                        </Link>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
+                      </Link>
+                    </CardContent>
+                  </Card>
+                ))}
 
                 {filteredCourts.length === 0 && (
                   <div className="col-span-full text-center py-20">

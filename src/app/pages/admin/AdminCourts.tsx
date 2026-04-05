@@ -140,10 +140,19 @@ export function AdminCourts() {
   // Province / District
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
   const [loadingDistricts, setLoadingDistricts] = useState(false);
 
   // Dialog thêm/sửa
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Helper để lấy Prefix từ Tên Loại sân
+  const getPrefix = (typeName: string) => {
+    const cleanName = typeName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toUpperCase();
+    const words = cleanName.trim().split(/\s+/);
+    if (words.length >= 2) return words[0][0] + words[1][0];
+    return cleanName.substring(0, 2) || 'SA';
+  };
   const [editingCourt, setEditingCourt] = useState<Court | null>(null);
   const [form, setForm] = useState<CourtForm>(defaultForm);
   const [isSaving, setIsSaving] = useState(false);
@@ -273,7 +282,18 @@ export function AdminCourts() {
     try {
       const formData = new FormData();
       Object.entries(form).forEach(([key, value]) => {
-        formData.append(key, String(value));
+        if (key === 'code') {
+          if (!editingCourt) {
+            // Tự động sinh mã dựa vào Loại Sân
+            const selectedType = courtTypes.find(t => t._id === form.typeId);
+            const prefix = selectedType ? getPrefix(selectedType.name) : 'SAN';
+            formData.append(key, `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`);
+          } else if (value) {
+            formData.append(key, String(value));
+          }
+        } else {
+          formData.append(key, String(value));
+        }
       });
       formData.set("mainImageIndex", String(mainImageIndex));
       imageFiles.forEach((file) => formData.append("images", file));
@@ -585,15 +605,11 @@ export function AdminCourts() {
           </DialogHeader>
 
           <div className="space-y-5 py-2">
-            {/* Tên & Mã sân */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Tên sân */}
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-1.5">
                 <Label>Tên sân <span className="text-red-500">*</span></Label>
                 <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="VD: Sân Cầu Lông Số 1" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Mã sân</Label>
-                <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="VD: CL01" />
               </div>
             </div>
 
