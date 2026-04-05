@@ -72,7 +72,10 @@ export function CourtInfoTabs({ court, courtReviews }: CourtInfoTabsProps) {
             {/* Mô tả */}
             <div>
               <h3 className="font-bold text-gray-900 mb-2">Mô tả</h3>
-              <p className="text-gray-600 text-base leading-relaxed">{court.description}</p>
+              <div 
+                className="text-gray-600 text-base leading-relaxed prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: court.description || "" }} 
+              />
             </div>
 
             {/* Tiện nghi */}

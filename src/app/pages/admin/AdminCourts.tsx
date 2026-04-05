@@ -298,6 +298,23 @@ export function AdminCourts() {
       formData.set("mainImageIndex", String(mainImageIndex));
       imageFiles.forEach((file) => formData.append("images", file));
 
+      // Tính toán các ảnh bị xóa để gửi lệnh removeCloudinary lên backend
+      if (editingCourt) {
+         const originalUrls = editingCourt.images || [];
+         const keptUrls = imagePreviews.filter(p => p.startsWith("http"));
+         const removedUrls = originalUrls.filter(url => !keptUrls.includes(url));
+         removedUrls.forEach(url => {
+            // Cắt public_id từ URL cloudinary datsanthethao/courts/...
+            const match = url.match(/datsanthethao\/courts\/([^.]+)/);
+            if (match) {
+               formData.append("removeImages", `datsanthethao/courts/${match[1]}`);
+            } else {
+               // Fallback nếu có định dạng URL khác
+               formData.append("removeImages", url);
+            }
+         });
+      }
+
       if (editingCourt) {
         await api.put(`/admin/courts/${editingCourt._id}`, formData, {
           headers: { "Content-Type": "multipart/form-data" }
