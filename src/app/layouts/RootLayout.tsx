@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from "react-router";
 import { Button } from "../components/ui/button";
-import { User, Menu, X, LogOut } from "lucide-react";
+import { User, Menu, X, LogOut, Instagram, Facebook, Twitter, FacebookIcon } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -221,6 +221,11 @@ export function RootLayout() {
                 <p className="text-gray-400 text-sm">
                   Hệ thống đặt sân thể thao trực tuyến hàng đầu Việt Nam
                 </p>
+                <div className="flex gap-5 mt-4 text-gray-400 text-sm cursor-pointer">
+                  <FacebookIcon></FacebookIcon>
+                  <Instagram></Instagram>
+                  <Twitter></Twitter>
+                </div>
               </div>
               <div>
                 <h4 className="font-semibold mb-4">Liên kết</h4>
@@ -244,7 +249,7 @@ export function RootLayout() {
                 <ul className="space-y-2 text-sm text-gray-400">
                   <li>Email: support@sportbooking.vn</li>
                   <li>Hotline: 1900 xxxx</li>
-                  <li>TP. Hồ Chí Minh, Việt Nam</li>
+                  <li>TP. Hà Nội, Việt Nam</li>
                 </ul>
               </div>
             </div>

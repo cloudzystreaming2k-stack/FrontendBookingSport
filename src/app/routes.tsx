@@ -8,7 +8,7 @@ import { NotFound } from "./pages/NotFound";
 import { HomePage } from "./pages/HomePage";
 import { CourtsPage } from "./pages/CourtsPage";
 import { CourtDetailPage } from "./pages/CourtDetailPage";
-import { BookingPage } from "./pages/BookingPage";
+
 import { PaymentPage } from "./pages/PaymentPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { NewsPage } from "./pages/NewsPage";
@@ -52,7 +52,6 @@ export const router = createBrowserRouter([
       },
       { path: "courts", Component: CourtsPage },
       { path: "courts/:id", Component: CourtDetailPage },
-      { path: "booking/:courtId", Component: BookingPage },
       { path: "payment/:bookingId", Component: PaymentPage },
       { path: "profile", Component: ProfilePage },
       { path: "news", Component: NewsPage },

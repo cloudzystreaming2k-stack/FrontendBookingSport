@@ -78,17 +78,27 @@ interface CourtForm {
   code: string;
   typeId: string;
   address: string;
+  provinceCode: string;
+  districtCode: string;
   latitude: number;
   longitude: number;
   description: string;
   capacity: number;
   openTime: string;
   closeTime: string;
-  pricingMorning: number;
-  pricingAfternoon: number;
-  pricingEvening: number;
   facilities: string[];
   status: "active" | "maintenance";
+}
+
+interface Province {
+  code: number;
+  name: string;
+}
+
+interface District {
+  code: number;
+  name: string;
+  provinceCode: number;
 }
 
 const defaultForm: CourtForm = {
@@ -96,15 +106,14 @@ const defaultForm: CourtForm = {
   code: "",
   typeId: "",
   address: "",
+  provinceCode: "",
+  districtCode: "",
   latitude: 21.017554486572717,
   longitude: 105.84992408752441,
   description: "",
   capacity: 4,
   openTime: "06:00",
   closeTime: "22:00",
-  pricingMorning: 0,
-  pricingAfternoon: 0,
-  pricingEvening: 0,
   facilities: [],
   status: "active",
 };
@@ -127,6 +136,11 @@ export function AdminCourts() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  // Province / District
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
 
   // Dialog thêm/sửa
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -169,6 +183,24 @@ export function AdminCourts() {
   }, [typeFilter, statusFilter, searchQuery]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Load danh sách tỉnh khi mount
+  useEffect(() => {
+    api.get("/locations/provinces")
+      .then(res => setProvinces(res.data.data ?? []))
+      .catch(() => toast.error("Không thể tải danh sách tỉnh/thành phố."));
+  }, []);
+
+  // Load quận/huyện khi form.provinceCode thay đổi
+  useEffect(() => {
+    if (!form.provinceCode) { setDistricts([]); return; }
+    setLoadingDistricts(true);
+    api.get(`/locations/provinces/${form.provinceCode}/districts`)
+      .then(res => setDistricts(res.data.data ?? []))
+      .catch(() => toast.error("Không thể tải danh sách quận/huyện."))
+      .finally(() => setLoadingDistricts(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.provinceCode]);
 
   // ─── Image Handling ───────────────────────────────────────────────────────
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,15 +245,14 @@ export function AdminCourts() {
       code: court.code || "",
       typeId: court.typeId?._id || "",
       address: court.address,
+      provinceCode: (court as any).provinceCode ? String((court as any).provinceCode) : "",
+      districtCode: (court as any).districtCode ? String((court as any).districtCode) : "",
       latitude: court.latitude || 20.967420728054737,
       longitude: court.longitude || 105.843186378479022,
       description: court.description || "",
       capacity: court.capacity,
       openTime: court.openTime,
       closeTime: court.closeTime,
-      pricingMorning: court.pricing.morning,
-      pricingAfternoon: court.pricing.afternoon,
-      pricingEvening: court.pricing.evening,
       facilities: court.facilities?.map(f => typeof f === 'object' ? f._id : f) || [],
       status: court.status,
     });
@@ -356,8 +387,8 @@ export function AdminCourts() {
           <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
           Làm mới
         </Button>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={clearFilters}
           disabled={isLoading || (!searchQuery && typeFilter === "all" && statusFilter === "all")}
           className="text-red-500 hover:text-red-600 hover:bg-red-50"
@@ -401,8 +432,8 @@ export function AdminCourts() {
                 </thead>
                 <tbody>
                   {courts.map((court) => (
-                    <tr 
-                      key={court._id} 
+                    <tr
+                      key={court._id}
                       className="border-b hover:bg-gray-50 transition-colors cursor-pointer"
                       onClick={() => {
                         const selection = window.getSelection();
@@ -418,7 +449,7 @@ export function AdminCourts() {
                           <img
                             src={court.mainImage || court.images[0]}
                             alt={court.name}
-                            className="w-25 h-25 object-cover rounded-lg shrink-0 border border-gray-100 shadow-sm"
+                            className="w-50 h-25 object-cover rounded-lg shrink-0 border border-gray-100 shadow-sm"
                           />
                         ) : (
                           <div className="w-25 h-25 bg-blue-50 rounded-lg flex items-center justify-center shrink-0 border border-blue-100">
@@ -545,7 +576,7 @@ export function AdminCourts() {
 
       {/* ── Dialog Thêm/Sửa ──────────────────────────────────────────────────── */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-       <DialogContent className="!w-[95vw] !max-w-[1300px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="!w-[95vw] !max-w-[1300px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingCourt ? "Chỉnh sửa sân" : "Thêm sân mới"}</DialogTitle>
             <DialogDescription>
@@ -589,6 +620,46 @@ export function AdminCourts() {
               <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Số nhà, tên đường, khu vực..." />
             </div>
 
+            {/* Tỉnh / Quận-Huyện */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Thành phố / Tỉnh</Label>
+                <Select
+                  value={form.provinceCode}
+                  onValueChange={(v) => setForm({ ...form, provinceCode: v, districtCode: "" })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn tỉnh/thành phố" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60 overflow-y-auto">
+                    {provinces.map(p => (
+                      <SelectItem key={p.code} value={String(p.code)}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Quận / Huyện</Label>
+                <Select
+                  value={form.districtCode}
+                  onValueChange={(v) => setForm({ ...form, districtCode: v })}
+                  disabled={!form.provinceCode || loadingDistricts}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={
+                      !form.provinceCode ? "Chọn tỉnh trước" :
+                        loadingDistricts ? "Đang tải..." : "Chọn quận/huyện"
+                    } />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60 overflow-y-auto">
+                    {districts.map(d => (
+                      <SelectItem key={d.code} value={String(d.code)}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             {/* Bản đồ định vị */}
             <div className="space-y-3 p-4 border border-blue-100 bg-blue-50/40 rounded-xl">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
@@ -599,16 +670,16 @@ export function AdminCourts() {
                   <span className="font-semibold text-blue-600">Click vào bản đồ</span> để ghim điểm
                 </div>
               </div>
-              
+
               <div className="w-full h-[400px] border border-gray-200 rounded-lg overflow-hidden shadow-inner isolate z-0 relative">
                 <MapContainer center={[form.latitude, form.longitude]} zoom={13} scrollWheelZoom={true} style={{ height: "100%", width: "100%", zIndex: 0 }}>
                   <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
-                  <LocationPicker 
-                    position={[form.latitude, form.longitude]} 
-                    setPosition={(p) => setForm({ ...form, latitude: p[0], longitude: p[1] })} 
+                  <LocationPicker
+                    position={[form.latitude, form.longitude]}
+                    setPosition={(p) => setForm({ ...form, latitude: p[0], longitude: p[1] })}
                   />
                 </MapContainer>
               </div>
@@ -641,25 +712,9 @@ export function AdminCourts() {
               </div>
             </div>
 
-            {/* Bảng giá */}
-            <div className="space-y-2">
-              <Label>Bảng giá (VNĐ/giờ)</Label>
-              <div className="grid grid-cols-3 gap-4">
-                {[
-                  { label: "Sáng (06-12h)", key: "pricingMorning" },
-                  { label: "Chiều (12-18h)", key: "pricingAfternoon" },
-                  { label: "Tối (18-22h)", key: "pricingEvening" },
-                ].map(({ label, key }) => (
-                  <div key={key} className="space-y-1.5">
-                    <Label className="text-xs text-gray-500">{label}</Label>
-                    <Input
-                      type="number" min={0} step={1000}
-                      value={form[key as keyof CourtForm]}
-                      onChange={(e) => setForm({ ...form, [key]: Number(e.target.value) })}
-                    />
-                  </div>
-                ))}
-              </div>
+            {/* Bảng giá đã chuyển vào trang Cấu hình Giá riêng */}
+            <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700 flex items-center gap-2">
+              ℹ️ Giá từng khung giờ được cấu hình chi tiết tại mục <strong className="mx-1">Cấu hình Giá</strong>. Giá mặc định 100.000đ/slot sẽ được tự động tạo khi thêm sân mới.
             </div>
 
             {/* Trạng thái */}
@@ -690,11 +745,10 @@ export function AdminCourts() {
                   return (
                     <label
                       key={fac._id}
-                      className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all border ${
-                        isSelected 
-                          ? "bg-white border-blue-200 shadow-sm" 
+                      className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all border ${isSelected
+                          ? "bg-white border-blue-200 shadow-sm"
                           : "border-transparent hover:bg-gray-100 text-gray-600"
-                      }`}
+                        }`}
                     >
                       <input
                         type="checkbox"
