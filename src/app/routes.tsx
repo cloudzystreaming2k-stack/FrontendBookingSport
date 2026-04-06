@@ -23,18 +23,18 @@ import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { AdminCourts } from "./pages/admin/AdminCourts";
 import { AdminBookings } from "./pages/admin/AdminBookings";
 import { AdminPayments } from "./pages/admin/AdminPayments";
-import { AdminUsers } from "./pages/admin/AdminUsers";
+import { AdminUsers } from "./pages/admin/users/AdminUsers";
 import { AdminPromotions } from "./pages/admin/AdminPromotions";
 import { AdminReviews } from "./pages/admin/AdminReviews";
 import { AdminNews } from "./pages/admin/AdminNews";
 import { AdminCourtTypes } from "./pages/admin/AdminCourtTypes";
-import { AdminFacilities } from "./pages/admin/AdminFacilities";
+import { AdminFacilities } from "./pages/admin/facilities/AdminFacilities";
 import { AdminLoginPage } from "./pages/admin/AdminLoginPage";
 import { OwnerRegisterPage } from "./pages/owner/OwnerRegisterPage";
 import { OwnerDashboard } from "./pages/owner/OwnerDashboard";
 import { AdminOwners } from "./pages/admin/AdminOwners";
 import { GuestRoute } from "./components/GuestRoute";
-import { AdminCourtPricing } from "./pages/admin/AdminCourtPricing";
+import { AdminCourtPricing } from "./pages/admin/court-pricing/AdminCourtPricing";
 
 export const router = createBrowserRouter([
   {
