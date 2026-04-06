@@ -7,6 +7,8 @@ interface User {
   lastName: string;
   email: string;
   phone?: string;
+  gender?: "male" | "female" | "other" | string;
+  dateOfBirth?: string;
   role: "user" | "admin" | "owner";
   avatar?: string;
 }
@@ -57,6 +59,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
+        phone: data.phone,
+        gender: data.gender,
+        dateOfBirth: data.dateOfBirth,
         role: data.role,
         avatar: data.avatar,
       });
@@ -84,6 +89,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
+        phone: data.phone,
+        gender: data.gender,
+        dateOfBirth: data.dateOfBirth,
         role: data.role,
       });
       return true;
@@ -101,6 +109,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
+        phone: data.phone,
+        gender: data.gender,
+        dateOfBirth: data.dateOfBirth,
         role: data.role,
       });
       return { success: true, isNew: !!data.isNew };
@@ -118,6 +129,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
+        phone: data.phone,
+        gender: data.gender,
+        dateOfBirth: data.dateOfBirth,
         role: data.role,
       });
       return { success: true, isNew: !!data.isNew };

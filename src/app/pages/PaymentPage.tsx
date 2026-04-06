@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router";
-import { CreditCard, CheckCircle, AlertCircle, Wallet, Banknote } from "lucide-react";
+import { CreditCard, CheckCircle, AlertCircle, Wallet, Banknote, User } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -94,6 +94,33 @@ export function PaymentPage() {
               <div className="flex justify-between">
                 <span className="text-gray-600">Giờ:</span>
                 <span className="font-semibold">{bookingData.time}</span>
+              </div>
+            </CardContent>
+          </Card>
+          {/* Info User Booking */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Thông tin người đặt
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="customer-name">Họ và tên <span className="text-red-500">*</span></Label>
+                <Input id="customer-name" placeholder="Ví dụ: Nguyễn Văn A" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="customer-phone">Số điện thoại <span className="text-red-500">*</span></Label>
+                <Input id="customer-phone" type="tel" placeholder="Ví dụ: 0912345678" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="customer-notes">Ghi chú thêm (Tùy chọn)</Label>
+                <textarea 
+                  id="customer-notes" 
+                  className="flex min-h-[80px] w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:border-transparent disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Yêu cầu thêm về sân bãi, dụng cụ..." 
+                />
               </div>
             </CardContent>
           </Card>
