@@ -22,7 +22,6 @@ import { RegisterPage } from "./pages/RegisterPage";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { AdminCourts } from "./pages/admin/AdminCourts";
 import { AdminBookings } from "./pages/admin/AdminBookings";
-import { AdminPayments } from "./pages/admin/AdminPayments";
 import { AdminUsers } from "./pages/admin/users/AdminUsers";
 import { AdminPromotions } from "./pages/admin/AdminPromotions";
 import { AdminReviews } from "./pages/admin/AdminReviews";
@@ -70,7 +69,6 @@ export const router = createBrowserRouter([
       { path: "facilities", Component: AdminFacilities },
       { path: "court-pricing", Component: AdminCourtPricing },
       { path: "bookings", Component: AdminBookings },
-      { path: "payments", Component: AdminPayments },
       { path: "users", Component: AdminUsers },
       { path: "owners", Component: AdminOwners },
       { path: "promotions", Component: AdminPromotions },
