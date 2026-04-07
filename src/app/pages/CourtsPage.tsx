@@ -80,7 +80,7 @@ export function CourtsPage() {
 
   // Fetch court types cho dropdown
   useEffect(() => {
-    api.get("/admin/court-types")
+    api.get("/courts/types")
       .then(res => setCourtTypes(res.data ?? []))
       .catch(() => { });
   }, []);

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link, useNavigate } from "react-router";
+import { useParams, Link, useNavigate, useLocation } from "react-router";
 import {
   ChevronLeft, ChevronRight, Clock,
   Heart, MapPin, Share2, Star, Users, Zap,
@@ -7,6 +7,7 @@ import {
 import { Badge } from "../components/ui/badge";
 import { toast } from "sonner";
 
+import { useAuth } from "../contexts/AuthContext";
 import { useCourtDetail, formatDisplayDate } from "./CourtDetail/useCourtDetail";
 import { BookingPanel, BookingSummary } from "./CourtDetail/BookingPanel";
 import { CourtInfoTabs } from "./CourtDetail/CourtInfoTabs";
@@ -53,6 +54,8 @@ function CourtNotFound() {
 export function CourtDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
 
   // ── Custom hook — toàn bộ state & logic ─────────────────────────────────
   const {
@@ -76,6 +79,12 @@ export function CourtDetailPage() {
 
   // ── Booking handler ──────────────────────────────────────────────────────
   const handleBook = () => {
+    if (!isAuthenticated) {
+      toast.info("Vui lòng đăng nhập để tiếp tục đặt sân.");
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
     if (!selectedSlots.length) {
       toast.error("Vui lòng chọn ít nhất 1 khung giờ.");
       return;
