@@ -37,7 +37,7 @@ export interface Booking {
   totalPrice: number;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   paymentStatus: 'pending' | 'paid' | 'refunded';
-  paymentMethod?: 'vnpay' | 'momo' | 'banking' | 'card';
+  paymentMethod?: 'vnpay' | 'momo' | 'banking' | 'momo';
   createdAt: string;
 }
 
@@ -325,7 +325,7 @@ export const mockBookings: Booking[] = [
     totalPrice: 900000,
     status: 'confirmed',
     paymentStatus: 'paid',
-    paymentMethod: 'card',
+    paymentMethod: 'momo',
     createdAt: '2026-03-06T11:00:00',
   },
   {
@@ -434,7 +434,7 @@ export const mockBookings: Booking[] = [
     totalPrice: 360000,
     status: 'confirmed',
     paymentStatus: 'paid',
-    paymentMethod: 'card',
+    paymentMethod: 'momo',
     createdAt: '2026-03-13T12:00:00',
   },
   {

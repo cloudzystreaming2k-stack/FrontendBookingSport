@@ -147,6 +147,20 @@ export function AdminBookings() {
     }
   };
 
+  const handleStatusChange = (id: string, newStatus: string) => {
+    const statusMap: Record<string, "pending" | "confirmed" | "completed" | "cancelled"> = {
+      pending: "pending",
+      confirmed: "confirmed",
+      completed: "completed",
+      cancelled: "cancelled",
+    };
+    
+    setBookings((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, status: statusMap[newStatus] } : b))
+    );
+    toast.success(`Đã cập nhật trạng thái: ${STATUS_LABELS[newStatus]}`);
+  };
+
   const handleReset = () => {
     setSearchQuery("");
     setStatusFilter("all");
@@ -387,19 +401,40 @@ export function AdminBookings() {
                             </span>
                           </td>
                           <td className="py-4 px-4">
-                            <Badge
-                              className={
-                                booking.status === "completed"
-                                  ? "bg-gray-100 text-gray-800"
-                                  : booking.status === "confirmed"
-                                  ? "bg-green-100 text-green-800"
-                                  : booking.status === "pending"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
-                              }
+                            <Select
+                              value={booking.status}
+                              onValueChange={(value) => handleStatusChange(booking.id, value)}
                             >
-                              {STATUS_LABELS[booking.status]}
-                            </Badge>
+                              <SelectTrigger className="w-40">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pending">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                                    <span>Chờ xác nhận</span>
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="confirmed">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                                    <span>Đã xác nhận</span>
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="completed">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-gray-500" />
+                                    <span>Đã xong</span>
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="cancelled">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                                    <span>Đã hủy</span>
+                                  </div>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
                           </td>
                           <td className="py-4 px-4">
                             <Button
@@ -492,7 +527,7 @@ export function AdminBookings() {
           {/* Time Grid */}
           <Card className="border-0 shadow-sm">
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto overflow-y-auto max-h-[500px] relative custom-scrollbar">
                 <div className="min-w-[800px]">
                   {/* Grid Header - Court Names */}
                   <div className="grid border-b bg-gray-50 sticky top-0 z-10" style={{ gridTemplateColumns: "80px repeat(auto-fit, minmax(150px, 1fr))" }}>
@@ -616,6 +651,7 @@ export function AdminBookings() {
         booking={detailBooking}
         onConfirm={handleConfirm}
         onCancel={handleCancel}
+        onStatusChange={handleStatusChange}
       />
     </div>
   );
