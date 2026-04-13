@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Eye,
   Search,
@@ -19,9 +19,48 @@ import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import { mockBookings, Booking, mockCourts } from "../../data/mockData";
 import { BookingDetailModal } from "../../components/admin/BookingDetailModal";
 import { toast } from "sonner";
+import api from "../../lib/api";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+export interface APIBooking {
+  _id: string;
+  bookingCode: string;
+  user?: { _id: string; fullName: string; email: string; phone: string };
+  courtId: {
+    _id: string;
+    name: string;
+    address: string;
+    images?: string[];
+    mainImage?: string;
+    code?: string;
+    typeId?: { _id: string; name: string; color: string; icon: string };
+  };
+  date: string;
+  customerName: string;
+  customerPhone: string;
+  slots: { startTime: string; endTime: string; price: number }[];
+  totalPrice: number;
+  discountCode?: string;
+  discountAmount?: number;
+  finalPrice: number;
+  preferredPaymentMethod: string;
+  paymentStatus: "unpaid" | "paid";
+  status: "pending" | "confirmed" | "completed" | "cancelled";
+  notes?: string;
+  createdAt: string;
+}
+
+export interface APICourt {
+  _id: string;
+  name: string;
+  code?: string;
+  typeId?: { _id: string; name: string; color: string; icon: string; };
+  address: string;
+  images?: string[];
+  mainImage?: string;
+}
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Chờ xác nhận",
@@ -75,7 +114,9 @@ function sameDay(a: Date, b: Date) {
 }
 
 export function AdminBookings() {
-  const [bookings, setBookings] = useState<Booking[]>(mockBookings);
+  const [bookings, setBookings] = useState<APIBooking[]>([]);
+  const [courts, setCourts] = useState<APICourt[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
@@ -88,7 +129,27 @@ export function AdminBookings() {
 
   // Detail modal state
   const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [detailBooking, setDetailBooking] = useState<Booking | null>(null);
+  const [detailBooking, setDetailBooking] = useState<APIBooking | null>(null);
+
+  const fetchBookingsAndCourts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [bookingsRes, courtsRes] = await Promise.all([
+        api.get("/admin/bookings"),
+        api.get("/admin/courts")
+      ]);
+      setBookings(bookingsRes.data.bookings || []);
+      setCourts(courtsRes.data || []);
+    } catch {
+      toast.error("Không thể tải danh sách đơn đặt sân hoặc danh sách sân.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchBookingsAndCourts();
+  }, [fetchBookingsAndCourts]);
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -106,9 +167,9 @@ export function AdminBookings() {
       const q = searchQuery.toLowerCase();
       const matchSearch =
         !q ||
-        b.id.toLowerCase().includes(q) ||
-        b.userName.toLowerCase().includes(q) ||
-        b.courtName.toLowerCase().includes(q);
+        b.bookingCode?.toLowerCase().includes(q) ||
+        b.customerName?.toLowerCase().includes(q) ||
+        b.courtId?.name?.toLowerCase().includes(q);
 
       const matchStatus = statusFilter === "all" || b.status === statusFilter;
 
@@ -121,9 +182,9 @@ export function AdminBookings() {
 
   // Filter courts for time grid
   const filteredCourts = useMemo(() => {
-    if (selectedCourtType === "all") return mockCourts;
-    return mockCourts.filter((c) => c.type === selectedCourtType);
-  }, [selectedCourtType]);
+    if (selectedCourtType === "all") return courts;
+    return courts.filter((c) => c.typeId?._id === selectedCourtType || c.typeId?.name.toLowerCase().includes(selectedCourtType));
+  }, [courts, selectedCourtType]);
 
   // Get bookings for selected date
   const dayBookings = useMemo(() => {
@@ -131,34 +192,33 @@ export function AdminBookings() {
   }, [bookings, gridDate]);
 
   // Actions
-  const handleConfirm = (id: string) => {
-    setBookings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status: "confirmed" as const } : b))
-    );
-    toast.success("Đã xác nhận đặt sân");
-  };
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      await api.patch(`/admin/bookings/${id}/status`, { status: newStatus });
+      toast.success(`Đã cập nhật trạng thái đơn thành công.`);
+      fetchBookingsAndCourts(); // Tải lại dữ liệu
 
-  const handleCancel = (id: string) => {
-    if (confirm("Bạn có chắc muốn hủy đặt sân này?")) {
-      setBookings((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, status: "cancelled" as const } : b))
-      );
-      toast.success("Đã hủy đặt sân");
+      // Nếu đang mở modal mà update status thì cũng update modal
+      if (detailBooking && detailBooking._id === id) {
+        setDetailBooking(prev => prev ? { ...prev, status: newStatus as any } : null);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể cập nhật trạng thái.");
     }
   };
 
-  const handleStatusChange = (id: string, newStatus: string) => {
-    const statusMap: Record<string, "pending" | "confirmed" | "completed" | "cancelled"> = {
-      pending: "pending",
-      confirmed: "confirmed",
-      completed: "completed",
-      cancelled: "cancelled",
-    };
-    
-    setBookings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status: statusMap[newStatus] } : b))
-    );
-    toast.success(`Đã cập nhật trạng thái: ${STATUS_LABELS[newStatus]}`);
+  const handlePaymentConfirm = async (id: string, amount: number, method: string) => {
+    try {
+      await api.post(`/admin/payments`, { bookingId: id, amount, paymentMethod: method });
+      toast.success("Đã xác nhận thanh toán thành công!");
+      fetchBookingsAndCourts(); // Reload list
+
+      if (detailBooking && detailBooking._id === id) {
+        setDetailBooking(prev => prev ? { ...prev, paymentStatus: 'paid' } : null);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Xác nhận thanh toán thất bại.");
+    }
   };
 
   const handleReset = () => {
@@ -359,7 +419,13 @@ export function AdminBookings() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredBookings.length === 0 ? (
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={9} className="py-12 text-center text-gray-400">
+                          Đang tải dữ liệu...
+                        </td>
+                      </tr>
+                    ) : filteredBookings.length === 0 ? (
                       <tr>
                         <td colSpan={9} className="py-12 text-center text-gray-400">
                           Không tìm thấy đơn đặt sân phù hợp
@@ -367,18 +433,18 @@ export function AdminBookings() {
                       </tr>
                     ) : (
                       filteredBookings.map((booking) => (
-                        <tr key={booking.id} className="border-b hover:bg-gray-50 transition-colors">
+                        <tr key={booking._id} className="border-b hover:bg-gray-50 transition-colors">
                           <td className="py-4 px-4">
-                            <span className="text-sm font-medium text-blue-600">{booking.id}</span>
+                            <span className="text-sm font-medium text-blue-600">{booking.bookingCode || 'BK00?'}</span>
                           </td>
                           <td className="py-4 px-4">
                             <div>
-                              <p className="text-sm font-medium text-gray-900">{booking.userName}</p>
-                              <p className="text-xs text-gray-500">tluan131@gmail.com</p>
+                              <p className="text-sm font-medium text-gray-900">{booking.customerName}</p>
+                              <p className="text-xs text-gray-500">{booking.customerPhone}</p>
                             </div>
                           </td>
                           <td className="py-4 px-4">
-                            <span className="text-sm text-gray-900">{booking.courtName}</span>
+                            <span className="text-sm text-gray-900">{booking.courtId?.name || "Không rõ"}</span>
                           </td>
                           <td className="py-4 px-4">
                             <span className="text-sm text-gray-600">
@@ -386,24 +452,30 @@ export function AdminBookings() {
                             </span>
                           </td>
                           <td className="py-4 px-4">
-                            <span className="text-sm text-gray-600">
-                              {booking.startTime} - {booking.endTime}
+                            <span className="text-sm text-gray-600 whitespace-nowrap">
+                              {booking.slots?.length > 0 ? (
+                                booking.slots.map((s, i) => (
+                                  <div key={i}>{s.startTime} - {s.endTime}</div>
+                                ))
+                              ) : "Không rõ"}
                             </span>
                           </td>
                           <td className="py-4 px-4">
-                            <span className="text-sm text-gray-600">
-                              {PAYMENT_METHOD_LABELS[booking.paymentMethod || ""] || "-"}
-                            </span>
+                            {booking.paymentStatus === 'paid' ? (
+                              <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-0">Đã thanh toán ({PAYMENT_METHOD_LABELS[booking.preferredPaymentMethod] || booking.preferredPaymentMethod})</Badge>
+                            ) : (
+                              <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100 border-0">Chưa thanh toán</Badge>
+                            )}
                           </td>
                           <td className="py-4 px-4">
                             <span className="text-sm font-semibold text-green-600">
-                              {booking.totalPrice.toLocaleString()}đ
+                              {booking.finalPrice?.toLocaleString()}đ
                             </span>
                           </td>
                           <td className="py-4 px-4">
                             <Select
                               value={booking.status}
-                              onValueChange={(value) => handleStatusChange(booking.id, value)}
+                              onValueChange={(value) => handleStatusChange(booking._id, value)}
                             >
                               <SelectTrigger className="w-40">
                                 <SelectValue />
@@ -533,9 +605,9 @@ export function AdminBookings() {
                   <div className="grid border-b bg-gray-50 sticky top-0 z-10" style={{ gridTemplateColumns: "80px repeat(auto-fit, minmax(150px, 1fr))" }}>
                     <div className="p-3 border-r font-semibold text-sm text-gray-700">Thời gian</div>
                     {filteredCourts.map((court) => (
-                      <div key={court.id} className="p-3 border-r text-center">
+                      <div key={court._id} className="p-3 border-r text-center">
                         <p className="font-semibold text-sm text-gray-900">{court.name}</p>
-                        <p className="text-xs text-gray-500">{court.code}</p>
+                        <p className="text-xs text-gray-500">{court.code || '-'}</p>
                       </div>
                     ))}
                   </div>
@@ -557,25 +629,35 @@ export function AdminBookings() {
                         {filteredCourts.map((court) => {
                           // Find bookings for this court at this time
                           const courtBookings = dayBookings.filter(
-                            (b) => b.courtId === court.id
+                            (b) => b.courtId?._id === court._id || (b.courtId as any) === court._id
                           );
 
-                          // Check if there's a booking starting at this slot
+                          // Temporary disabling drawing the booking on the mock grid
+                          // Because slot structure changed (array of slots vs startTime/endTime)
                           const bookingAtSlot = courtBookings.find((b) => {
-                            const { start } = getSlotSpan(b.startTime, b.endTime);
-                            return start === timeIdx;
+                            // Find if any slot inside the booking matches this time block
+                            return b.slots?.some(s => {
+                              const { start } = getSlotSpan(s.startTime, s.endTime);
+                              return start === timeIdx;
+                            });
                           });
 
                           if (bookingAtSlot) {
+                            // Find the correct slot
+                            const matchedSlot = bookingAtSlot.slots.find(s => {
+                              const { start } = getSlotSpan(s.startTime, s.endTime);
+                              return start === timeIdx;
+                            });
+
                             const { span } = getSlotSpan(
-                              bookingAtSlot.startTime,
-                              bookingAtSlot.endTime
+                              matchedSlot!.startTime,
+                              matchedSlot!.endTime
                             );
                             const colors = STATUS_COLORS[bookingAtSlot.status];
 
                             return (
                               <div
-                                key={court.id}
+                                key={`${court._id}-${bookingAtSlot._id}-${timeIdx}`}
                                 className={`border-r p-2 ${colors.bg} border ${colors.border} cursor-pointer hover:opacity-80 transition-opacity`}
                                 style={{ gridRow: `span ${span}` }}
                                 onClick={() => {
@@ -585,13 +667,13 @@ export function AdminBookings() {
                               >
                                 <div className="h-full flex flex-col justify-center">
                                   <p className={`text-xs font-bold ${colors.text} truncate`}>
-                                    {bookingAtSlot.id}
+                                    {bookingAtSlot.bookingCode}
                                   </p>
                                   <p className={`text-xs ${colors.text} truncate mt-0.5`}>
-                                    {bookingAtSlot.userName}
+                                    {bookingAtSlot.customerName}
                                   </p>
                                   <p className={`text-xs ${colors.text} mt-0.5`}>
-                                    {bookingAtSlot.startTime} - {bookingAtSlot.endTime}
+                                    {matchedSlot!.startTime} - {matchedSlot!.endTime}
                                   </p>
                                   <Badge
                                     className={`mt-1 text-[10px] px-1.5 py-0 ${colors.bg} ${colors.text} border-0`}
@@ -605,8 +687,10 @@ export function AdminBookings() {
 
                           // Check if this slot is part of an existing booking (don't render anything)
                           const isPartOfBooking = courtBookings.some((b) => {
-                            const { start, span } = getSlotSpan(b.startTime, b.endTime);
-                            return timeIdx > start && timeIdx < start + span;
+                            return b.slots?.some(s => {
+                              const { start, span } = getSlotSpan(s.startTime, s.endTime);
+                              return timeIdx > start && timeIdx < start + span;
+                            });
                           });
 
                           if (isPartOfBooking) {
@@ -616,7 +700,7 @@ export function AdminBookings() {
                           // Empty slot
                           return (
                             <div
-                              key={court.id}
+                              key={court._id}
                               className="border-r p-3 bg-white hover:bg-blue-50 cursor-pointer transition-colors"
                               onClick={() => {
                                 toast.info("Chức năng đặt sân trực tiếp đang phát triển");
@@ -648,10 +732,9 @@ export function AdminBookings() {
       <BookingDetailModal
         open={detailModalOpen}
         onOpenChange={setDetailModalOpen}
-        booking={detailBooking}
-        onConfirm={handleConfirm}
-        onCancel={handleCancel}
+        booking={detailBooking as any}
         onStatusChange={handleStatusChange}
+        onPaymentConfirm={handlePaymentConfirm}
       />
     </div>
   );

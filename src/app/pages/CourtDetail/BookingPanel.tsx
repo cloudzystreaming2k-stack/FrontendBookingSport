@@ -164,13 +164,21 @@ export function BookingPanel({
                   {sessionSlots.map((slot: ApiSlot) => {
                     const isSelected = selectedSlots.includes(slot.time);
                     const isBooked   = slot.status === "booked";
+                    const isToday    = selectedDay === today;
+                    const now = new Date();
+                    const currentTimeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+                    const isPast = isToday && slot.time < currentTimeStr;
+
+                    const isDisabled = isBooked || isPast;
+
                     return (
                       <button
                         key={slot.time}
-                        disabled={isBooked}
+                        disabled={isDisabled}
                         onClick={() => toggleSlot(slot.time)}
                         className={`relative flex flex-col items-center py-3 rounded-xl border-2 text-center transition-all ${
                           isBooked   ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed"
+                          : isPast     ? "bg-gray-50/50 border-gray-100 text-gray-300 cursor-not-allowed opacity-60"
                           : isSelected ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200 scale-[1.02]"
                           : "bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50 cursor-pointer"
                         }`}
@@ -178,7 +186,7 @@ export function BookingPanel({
                         <span className="font-bold text-[13px] tracking-tight whitespace-nowrap">
                           {slot.time} - {slot.endTime}
                         </span>
-                        <span className={`text-[11px] mt-0.5 ${isSelected ? "text-blue-100" : isBooked ? "text-gray-300" : "text-gray-500 font-medium"}`}>
+                        <span className={`text-[11px] mt-0.5 ${isSelected ? "text-blue-100" : isDisabled ? "text-gray-300" : "text-gray-500 font-medium"}`}>
                           {isBooked ? "Đã đặt" : `${(slot.price / 1000).toFixed(0)}k`}
                         </span>
                         {isSelected && (

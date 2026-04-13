@@ -3,11 +3,12 @@ import { RootLayout } from "./layouts/RootLayout";
 import { AdminLayout } from "./layouts/AdminLayout";
 import { OwnerLayout } from "./layouts/OwnerLayout";
 import { NotFound } from "./pages/NotFound";
+import { BookingSuccessPage } from "./pages/BookingSuccessPage";
 
 // Customer Pages
 import { HomePage } from "./pages/HomePage";
 import { CourtsPage } from "./pages/CourtsPage";
-import { CourtDetailPage } from "./pages/CourtDetailPage";
+import { CourtDetailPage } from "./pages/CourtDetail/CourtDetailPage";
 
 import { PaymentPage } from "./pages/PaymentPage";
 import { ProfilePage } from "./pages/ProfilePage";
@@ -51,7 +52,8 @@ export const router = createBrowserRouter([
       },
       { path: "courts", Component: CourtsPage },
       { path: "courts/:id", Component: CourtDetailPage },
-      { path: "payment/:bookingId", Component: PaymentPage },
+      { path: "payment", Component: PaymentPage },
+      { path: "booking-success/:bookingId", Component: BookingSuccessPage },
       { path: "profile", Component: ProfilePage },
       { path: "news", Component: NewsPage },
       { path: "news/:id", Component: NewsDetailPage },

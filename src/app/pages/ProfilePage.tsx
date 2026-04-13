@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Calendar, Heart, Lock, Mail, Phone, MapPin, Star, X, Clock, CreditCard, CheckCircle, AlertCircle, XCircle } from "lucide-react";
+import { User, Calendar, Heart, Lock, Mail, Phone, MapPin, Star, X, Clock, CreditCard, CheckCircle, AlertCircle, XCircle, Image as ImageIcon } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -7,11 +7,40 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { Separator } from "../components/ui/separator";
-import { mockBookings, mockCourts, Booking } from "../data/mockData";
+import { mockCourts, Booking } from "../data/mockData";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import api from "../lib/api";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+export interface APIBooking {
+  _id: string;
+  bookingCode: string;
+  userId?: { _id: string; fullName: string; email: string; phone: string };
+  courtId: {
+    _id: string;
+    name: string;
+    address: string;
+    images?: string[];
+    mainImage?: string;
+    code?: string;
+    typeId?: { _id: string; name: string; color: string; icon: string };
+  };
+  date: string;
+  customerName: string;
+  customerPhone: string;
+  slots: { startTime: string; endTime: string; price: number }[];
+  totalPrice: number;
+  discountCode?: string;
+  discountAmount?: number;
+  finalPrice: number;
+  preferredPaymentMethod: string;
+  status: "pending" | "confirmed" | "completed" | "cancelled";
+  notes?: string;
+  createdAt: string;
+}
 
 type TabType = "account" | "favorites" | "bookings";
 
@@ -19,12 +48,36 @@ export function ProfilePage() {
   const { user, isAuthenticated, updateProfile } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>("account");
-  
+
+  // Booking state - from API
+  const [userBookings, setUserBookings] = useState<APIBooking[]>([]);
+  const [isLoadingBookings, setIsLoadingBookings] = useState(false);
+
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login", { state: { from: { pathname: "/profile" } } });
     }
   }, [isAuthenticated, navigate]);
+
+  // Fetch user bookings from API when tab becomes active
+  useEffect(() => {
+    if (activeTab === "bookings" && isAuthenticated) {
+      fetchUserBookings();
+    }
+  }, [activeTab, isAuthenticated]);
+
+  const fetchUserBookings = async () => {
+    setIsLoadingBookings(true);
+    try {
+      const response = await api.get("/bookings/my");
+      setUserBookings(response.data || []);
+    } catch (error) {
+      toast.error("Không thể tải lịch sử đặt sân");
+      console.error(error);
+    } finally {
+      setIsLoadingBookings(false);
+    }
+  };
 
   const [userData, setUserData] = useState({
     firstName: user?.firstName || "",
@@ -45,7 +98,7 @@ export function ProfilePage() {
   const [favoriteCourts] = useState(mockCourts.filter((c) => ["C001", "C003", "C005"].includes(c.id)));
 
   // Booking detail modal state
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<APIBooking | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Update local state when user changes
@@ -66,7 +119,34 @@ export function ProfilePage() {
     return null;
   }
 
-  const userBookings = mockBookings.filter((b) => b.userId === "U001");
+  // ─── Helper Functions ────────────────────────────────────────────────────────
+
+  /**
+   * Tính khoảng thời gian từ slot đầu tiên đến slot cuối cùng
+   * VD: slots[09:00-09:30, 09:30-10:00] → "09:00 - 10:00" (1 giờ)
+   */
+  const getTimeRange = (slots: { startTime: string; endTime: string }[]): string => {
+    if (!slots || slots.length === 0) return "Không xác định";
+
+    const firstSlot = slots[0];
+    const lastSlot = slots[slots.length - 1];
+
+    // Tính tổng giờ từ startTime slot đầu đến endTime slot cuối
+    const startTime = firstSlot.startTime;
+    const endTime = lastSlot.endTime;
+
+    // Parse time
+    const [startH, startM] = startTime.split(":").map(Number);
+    const [endH, endM] = endTime.split(":").map(Number);
+    const totalMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+    const hours = totalMinutes / 60;
+
+    return `${startTime} - ${endTime} (${hours.toFixed(1)} giờ)`;
+  };
+
+  const getTotalSlotPrice = (slots: { price: number }[]): number => {
+    return slots.reduce((sum, slot) => sum + (slot.price || 0), 0);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -112,10 +192,10 @@ export function ProfilePage() {
   };
 
   const handleUpdateProfile = () => {
-    updateProfile({ 
+    updateProfile({
       firstName: userData.firstName,
       lastName: userData.lastName,
-      email: userData.email, 
+      email: userData.email,
       phone: userData.phone,
       gender: userData.gender,
       dateOfBirth: userData.dateOfBirth
@@ -144,7 +224,7 @@ export function ProfilePage() {
     toast.success("Đã xóa khỏi danh sách yêu thích");
   };
 
-  const handleOpenDetailModal = (booking: Booking) => {
+  const handleOpenDetailModal = (booking: APIBooking) => {
     setSelectedBooking(booking);
     setIsDetailModalOpen(true);
   };
@@ -154,14 +234,16 @@ export function ProfilePage() {
     setIsDetailModalOpen(false);
   };
 
-  const handleCancelBooking = (booking: Booking) => {
-    toast.success("Đã hủy đặt sân thành công!");
-    handleCloseDetailModal();
-  };
-
-  const handlePayment = (booking: Booking) => {
-    navigate("/payment", { state: { booking } });
-    handleCloseDetailModal();
+  const handleCancelBooking = async (booking: APIBooking) => {
+    try {
+      await api.patch(`/bookings/${booking._id}/status`, { status: "cancelled" });
+      toast.success("Đã hủy đặt sân thành công!");
+      // Reload booking list
+      await fetchUserBookings();
+      handleCloseDetailModal();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Không thể hủy đơn đặt sân");
+    }
   };
 
   const getPaymentMethodLabel = (method?: string) => {
@@ -246,47 +328,42 @@ export function ProfilePage() {
               <nav className="space-y-1">
                 <button
                   onClick={() => setActiveTab("account")}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    activeTab === "account"
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === "account"
                       ? "bg-blue-600 text-white shadow-md"
                       : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                    }`}
                 >
                   <User className="w-4 h-4" />
                   Thông tin tài khoản
                 </button>
                 <button
                   onClick={() => setActiveTab("favorites")}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    activeTab === "favorites"
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === "favorites"
                       ? "bg-blue-600 text-white shadow-md"
                       : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                    }`}
                 >
                   <Heart className="w-4 h-4" />
                   Sân yêu thích
                   {favoriteCourts.length > 0 && (
-                    <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
-                      activeTab === "favorites" ? "bg-white/20" : "bg-blue-100 text-blue-600"
-                    }`}>
+                    <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${activeTab === "favorites" ? "bg-white/20" : "bg-blue-100 text-blue-600"
+                      }`}>
                       {favoriteCourts.length}
                     </span>
                   )}
                 </button>
                 <button
                   onClick={() => setActiveTab("bookings")}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    activeTab === "bookings"
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === "bookings"
                       ? "bg-blue-600 text-white shadow-md"
                       : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                    }`}
                 >
                   <Calendar className="w-4 h-4" />
                   Lịch sử đặt sân
                   {userBookings.filter(b => b.status === 'pending').length > 0 && (
-                    <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
-                      activeTab === "bookings" ? "bg-white/20" : "bg-yellow-100 text-yellow-600"
-                    }`}>
+                    <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${activeTab === "bookings" ? "bg-white/20" : "bg-yellow-100 text-yellow-600"
+                      }`}>
                       {userBookings.filter(b => b.status === 'pending').length}
                     </span>
                   )}
@@ -366,8 +443,8 @@ export function ProfilePage() {
                         <User className="w-4 h-4 text-gray-500" />
                         Giới tính
                       </Label>
-                      <Select 
-                        value={userData.gender} 
+                      <Select
+                        value={userData.gender}
                         onValueChange={(val) => setUserData({ ...userData, gender: val })}
                       >
                         <SelectTrigger id="gender">
@@ -480,9 +557,9 @@ export function ProfilePage() {
                           <div className="absolute bottom-3 left-3">
                             <Badge className="bg-white/90 text-gray-900 border-0">
                               {court.type === 'pickleball' ? 'Pickleball' :
-                               court.type === 'badminton' ? 'Cầu lông' :
-                               court.type === 'basketball' ? 'Bóng rổ' :
-                               court.type === 'tennis' ? 'Tennis' : 'Bóng chuyền'}
+                                court.type === 'badminton' ? 'Cầu lông' :
+                                  court.type === 'basketball' ? 'Bóng rổ' :
+                                    court.type === 'tennis' ? 'Tennis' : 'Bóng chuyền'}
                             </Badge>
                           </div>
                         </div>
@@ -543,17 +620,24 @@ export function ProfilePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                {userBookings.length > 0 ? (
+                {isLoadingBookings ? (
+                  <div className="py-12 text-center">
+                    <div className="inline-flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                    <p className="text-gray-600 mt-4">Đang tải lịch sử đặt sân...</p>
+                  </div>
+                ) : userBookings.length > 0 ? (
                   <div className="space-y-4">
                     {userBookings.map((booking) => (
-                      <Card key={booking.id} className="border hover:shadow-md transition-shadow">
+                      <Card key={booking._id} className="border hover:shadow-md transition-shadow">
                         <CardContent className="p-5">
                           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                             <div className="flex-1">
                               <div className="flex items-start justify-between mb-3">
                                 <div>
-                                  <h3 className="font-bold text-lg">{booking.courtName}</h3>
-                                  <p className="text-sm text-gray-500 mt-0.5">Mã đặt sân: {booking.id}</p>
+                                  <h3 className="font-bold text-lg">{booking.courtId.name}</h3>
+                                  <p className="text-sm text-gray-500 mt-0.5">Mã đặt sân: {booking.bookingCode}</p>
                                 </div>
                                 <Badge className={getStatusColor(booking.status)}>
                                   {getStatusLabel(booking.status)}
@@ -569,27 +653,37 @@ export function ProfilePage() {
                                 <div>
                                   <p className="text-xs text-gray-500 mb-1">Giờ chơi</p>
                                   <p className="text-sm font-medium">
-                                    {booking.startTime} - {booking.endTime}
+                                    {getTimeRange(booking.slots).split(" (")[0]}
                                   </p>
                                 </div>
                                 <div>
                                   <p className="text-xs text-gray-500 mb-1">Thanh toán</p>
                                   <p className="text-sm font-medium">
-                                    {getPaymentStatusLabel(booking.paymentStatus)}
+                                    {booking.status === 'completed' ? 'Hoàn tất' :
+                                      ['pending', 'confirmed'].includes(booking.status) ? 'Chờ xử lý' : 'Hủy'}
                                   </p>
                                 </div>
                                 <div>
                                   <p className="text-xs text-gray-500 mb-1">Tổng tiền</p>
                                   <p className="text-sm font-bold text-blue-600">
-                                    {booking.totalPrice.toLocaleString()}đ
+                                    {booking.finalPrice?.toLocaleString()}đ
                                   </p>
                                 </div>
                               </div>
                             </div>
                             <div className="flex gap-2 lg:flex-col">
-                              {booking.status === "confirmed" && (
-                                <Button variant="outline" size="sm" className="flex-1 lg:flex-none" onClick={() => handleCancelBooking(booking)}>
-                                  Hủy đặt sân
+                              {['pending', 'confirmed'].includes(booking.status) && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1 lg:flex-none"
+                                  onClick={() => {
+                                    if (window.confirm('Bạn có chắc chắn muốn hủy đơn này?')) {
+                                      handleCancelBooking(booking);
+                                    }
+                                  }}
+                                >
+                                  Hủy
                                 </Button>
                               )}
                               <Button size="sm" className="flex-1 lg:flex-none" onClick={() => handleOpenDetailModal(booking)}>
@@ -621,9 +715,8 @@ export function ProfilePage() {
 
       {/* Booking Detail Modal */}
       {isDetailModalOpen && selectedBooking && (() => {
-        // Get court details
-        const court = mockCourts.find(c => c.id === selectedBooking.courtId);
-        
+        const court = selectedBooking.courtId;
+
         return (
           <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -631,7 +724,7 @@ export function ProfilePage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <DialogTitle className="text-2xl">Chi tiết đơn đặt sân</DialogTitle>
-                    <p className="text-sm text-gray-500 mt-1">Mã đặt sân: {selectedBooking.id}</p>
+                    <p className="text-sm text-gray-500 mt-1">Mã đặt sân: {selectedBooking.bookingCode}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {getStatusIcon(selectedBooking.status)}
@@ -651,30 +744,30 @@ export function ProfilePage() {
                   </h3>
                   {court && (
                     <div className="border rounded-lg overflow-hidden">
-                      <div className="relative h-48">
-                        <img
-                          src={court.images[0]}
-                          alt={court.name}
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="relative h-48 bg-gray-200">
+                        {court.mainImage || court.images?.[0] ? (
+                          <img
+                            src={court.mainImage || court.images?.[0]!}
+                            alt={court.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ImageIcon className="w-12 h-12 text-gray-400" />
+                          </div>
+                        )}
                         <div className="absolute bottom-3 left-3">
                           <Badge className="bg-white/90 text-gray-900 border-0">
-                            {court.type === 'pickleball' ? 'Pickleball' :
-                             court.type === 'badminton' ? 'Cầu lông' :
-                             court.type === 'basketball' ? 'Bóng rổ' :
-                             court.type === 'tennis' ? 'Tennis' : 'Bóng chuyền'}
+                            {court.typeId?.name || 'Không xác định'}
                           </Badge>
                         </div>
                       </div>
                       <div className="p-4 bg-gray-50">
-                        <h4 className="font-bold text-lg mb-1">{selectedBooking.courtName}</h4>
+                        <h4 className="font-bold text-lg mb-1">{court.name}</h4>
                         <p className="text-sm text-gray-600">{court.address}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <div className="flex items-center gap-1">
-                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                            <span className="font-semibold text-sm">{court.rating}</span>
-                          </div>
-                          <span className="text-sm text-gray-500">({court.reviewCount} đánh giá)</span>
+                        <div className="flex items-center gap-2 mt-2 text-xs text-gray-600">
+                          <MapPin className="w-3 h-3" />
+                          <span>{court.code}</span>
                         </div>
                       </div>
                     </div>
@@ -687,7 +780,7 @@ export function ProfilePage() {
                     <Calendar className="w-5 h-5 text-blue-600" />
                     Thông tin đặt sân
                   </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
                       <p className="text-xs text-blue-600 font-medium mb-1">Ngày chơi</p>
                       <p className="text-sm font-bold text-gray-900">
@@ -699,18 +792,37 @@ export function ProfilePage() {
                         })}
                       </p>
                     </div>
+
                     <div className="p-4 bg-green-50 rounded-lg border border-green-100">
-                      <p className="text-xs text-green-600 font-medium mb-1 flex items-center gap-1">
+                      <p className="text-xs text-green-600 font-medium mb-3 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        Giờ chơi
+                        Chi tiết giờ chơi
                       </p>
-                      <p className="text-sm font-bold text-gray-900">
-                        {selectedBooking.startTime} - {selectedBooking.endTime}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        ({selectedBooking.hours} giờ)
-                      </p>
+                      <div className="space-y-2">
+                        {selectedBooking.slots && selectedBooking.slots.length > 0 ? (
+                          selectedBooking.slots.map((slot, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-sm">
+                              <div>
+                                <span className="font-medium text-gray-900">
+                                  Slot {idx + 1}: {slot.startTime} - {slot.endTime}
+                                </span>
+                              </div>
+                              <span className="text-green-700 font-semibold">
+                                {slot.price.toLocaleString()}đ
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500">Không có dữ liệu slot</p>
+                        )}
+                      </div>
+                      <div className="border-t border-green-200 mt-3 pt-2">
+                        <p className="text-xs text-gray-600">
+                          Tổng thời gian: {getTimeRange(selectedBooking.slots)}
+                        </p>
+                      </div>
                     </div>
+
                     <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
                       <p className="text-xs text-purple-600 font-medium mb-1">Ngày đặt</p>
                       <p className="text-sm font-bold text-gray-900">
@@ -737,19 +849,20 @@ export function ProfilePage() {
                   <div className="border rounded-lg p-5 bg-gray-50">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div>
-                        <p className="text-xs text-gray-500 mb-1">Trạng thái thanh toán</p>
+                        <p className="text-xs text-gray-500 mb-1">Trạng thái đơn hàng</p>
                         <Badge className={
-                          selectedBooking.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                          selectedBooking.paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
+                          selectedBooking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            selectedBooking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              selectedBooking.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                                'bg-gray-100 text-gray-800'
                         }>
-                          {getPaymentStatusLabel(selectedBooking.paymentStatus)}
+                          {getStatusLabel(selectedBooking.status)}
                         </Badge>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Phương thức thanh toán</p>
                         <p className="text-sm font-medium text-gray-900">
-                          {getPaymentMethodLabel(selectedBooking.paymentMethod)}
+                          {getPaymentMethodLabel(selectedBooking.preferredPaymentMethod)}
                         </p>
                       </div>
                     </div>
@@ -758,18 +871,20 @@ export function ProfilePage() {
 
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Giá thuê sân ({selectedBooking.hours} giờ)</span>
-                        <span className="font-medium">{selectedBooking.totalPrice.toLocaleString()}đ</span>
+                        <span className="text-gray-600">Tổng giá tiền</span>
+                        <span className="font-medium">{selectedBooking.finalPrice.toLocaleString()}đ</span>
                       </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Phí dịch vụ</span>
-                        <span className="font-medium">0đ</span>
-                      </div>
+                      {selectedBooking.discountAmount && selectedBooking.discountAmount > 0 && (
+                        <div className="flex items-center justify-between text-sm text-green-700">
+                          <span className="text-gray-600">Giảm giá</span>
+                          <span className="font-medium">-{selectedBooking.discountAmount.toLocaleString()}đ</span>
+                        </div>
+                      )}
                       <Separator className="my-2" />
                       <div className="flex items-center justify-between">
-                        <span className="text-base font-semibold">Tổng cộng</span>
+                        <span className="text-base font-semibold">Cần thanh toán</span>
                         <span className="text-xl font-bold text-blue-600">
-                          {selectedBooking.totalPrice.toLocaleString()}đ
+                          {selectedBooking.finalPrice.toLocaleString()}đ
                         </span>
                       </div>
                     </div>
@@ -788,21 +903,14 @@ export function ProfilePage() {
                         <User className="w-4 h-4 text-gray-400" />
                         <div>
                           <p className="text-xs text-gray-500">Họ và tên</p>
-                          <p className="text-sm font-medium">{selectedBooking.userName}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-gray-400" />
-                        <div>
-                          <p className="text-xs text-gray-500">Email</p>
-                          <p className="text-sm font-medium">{user.email}</p>
+                          <p className="text-sm font-medium">{selectedBooking.customerName}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Phone className="w-4 h-4 text-gray-400" />
                         <div>
                           <p className="text-xs text-gray-500">Số điện thoại</p>
-                          <p className="text-sm font-medium">{user.phone || 'Chưa cập nhật'}</p>
+                          <p className="text-sm font-medium">{selectedBooking.customerPhone}</p>
                         </div>
                       </div>
                     </div>
@@ -811,16 +919,7 @@ export function ProfilePage() {
 
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-                  {selectedBooking.paymentStatus === 'pending' && (
-                    <Button
-                      className="flex-1"
-                      onClick={() => handlePayment(selectedBooking)}
-                    >
-                      <CreditCard className="w-4 h-4 mr-2" />
-                      Thanh toán ngay
-                    </Button>
-                  )}
-                  {selectedBooking.status === 'confirmed' && (
+                  {(selectedBooking.status === 'pending' || selectedBooking.status === 'confirmed') && (
                     <Button
                       variant="destructive"
                       className="flex-1"
@@ -835,7 +934,7 @@ export function ProfilePage() {
                       variant="outline"
                       className="flex-1"
                       onClick={() => {
-                        navigate(`/courts/${court.id}`);
+                        navigate(`/courts/${court._id}`);
                         handleCloseDetailModal();
                       }}
                     >

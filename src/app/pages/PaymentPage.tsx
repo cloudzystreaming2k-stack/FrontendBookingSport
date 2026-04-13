@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { useParams, useNavigate, useLocation } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import { CreditCard, CheckCircle, AlertCircle, Wallet, Banknote, User } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
+import { toast } from "sonner";
+import api from "../lib/api";
 
 export function PaymentPage() {
-  const { bookingId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const stateData = location.state as any;
@@ -18,11 +19,18 @@ export function PaymentPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [notes, setNotes] = useState("");
+
   // Mock booking data (Lấy từ state truyền sang hoặc mock mặc định)
   const bookingData = stateData || {
+    courtId: "temp-id",
     courtName: "Sân Pickleball Quận 1",
-    date: "05/03/2026",
+    date: "2026-03-05",
+    displayDate: "05/03/2026",
     time: "18:00 - 20:00",
+    slots: [{ startTime: "18:00", endTime: "20:00", price: 500000 }],
     hours: 2,
     totalPrice: 500000,
     originalPrice: 500000,
@@ -30,41 +38,48 @@ export function PaymentPage() {
   };
 
   const handlePayment = async () => {
+    if (!customerName.trim() || !customerPhone.trim()) {
+      toast.error("Vui lòng điền đủ Họ tên và Số điện thoại liên hệ");
+      return;
+    }
+
     setIsProcessing(true);
 
-    // Mock payment processing
-    setTimeout(() => {
+    try {
+      const payload = {
+        courtId: bookingData.courtId,
+        date: bookingData.date,
+        slots: bookingData.slots,
+        customerName,
+        customerPhone,
+        totalPrice: bookingData.originalPrice || bookingData.totalPrice,
+        finalPrice: bookingData.totalPrice,
+        preferredPaymentMethod: paymentMethod,
+        notes,
+      };
+
+      const res = await api.post("/bookings", payload);
+
+      if (paymentMethod === "vnpay") {
+        toast.info("Đang chuyển hướng sang cổng thanh toán VNPay...", { duration: 3000 });
+        const vnpRes = await api.post("/payments/vnpay/create-payment-url", { 
+           bookingId: res.data.booking._id 
+        });
+        window.location.href = vnpRes.data.paymentUrl;
+        // Chú ý: return luôn không nhả biến isProcessing để cấm nháy đúp lúc đợi trình duyệt nhảy
+        return; 
+      }
+
+      // Luồng thanh toán Tiền mặt hoặc Momo nội bộ
+      toast.success("Tạo đơn đặt sân thành công!");
+      navigate(`/booking-success/${res.data.booking?.bookingCode || res.data.booking?._id}`);
       setIsProcessing(false);
-      setPaymentSuccess(true);
-
-      // Redirect to profile after 2 seconds
-      setTimeout(() => {
-        navigate("/profile");
-      }, 2000);
-    }, 2000);
+      
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Lỗi giao dịch. Vui lòng thử lại.");
+      setIsProcessing(false);
+    }
   };
-
-  if (paymentSuccess) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <Card className="text-center">
-          <CardContent className="pt-12 pb-8">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-12 h-12 text-green-600" />
-            </div>
-            <h2 className="text-2xl font-bold mb-2">Đặt sân thành công!</h2>
-            <p className="text-gray-600 mb-6">
-              Mã đặt sân: <span className="font-semibold">{bookingId}</span>
-            </p>
-            <p className="text-sm text-gray-500 mb-6">
-              Thông tin chi tiết đã được gửi về email của bạn
-            </p>
-            <Button onClick={() => navigate("/profile")}>Xem lịch sử đặt sân</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -80,16 +95,12 @@ export function PaymentPage() {
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-600">Mã đặt sân:</span>
-                <span className="font-semibold">{bookingId}</span>
-              </div>
-              <div className="flex justify-between">
                 <span className="text-gray-600">Sân:</span>
                 <span className="font-semibold">{bookingData.courtName}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Ngày:</span>
-                <span className="font-semibold">{bookingData.date}</span>
+                <span className="font-semibold">{bookingData.displayDate || bookingData.date}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Giờ:</span>
@@ -108,18 +119,31 @@ export function PaymentPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="customer-name">Họ và tên <span className="text-red-500">*</span></Label>
-                <Input id="customer-name" placeholder="Ví dụ: Nguyễn Văn A" />
+                <Input
+                  id="customer-name"
+                  placeholder="Ví dụ: Nguyễn Văn A"
+                  value={customerName}
+                  onChange={e => setCustomerName(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="customer-phone">Số điện thoại <span className="text-red-500">*</span></Label>
-                <Input id="customer-phone" type="tel" placeholder="Ví dụ: 0912345678" />
+                <Input
+                  id="customer-phone"
+                  type="tel"
+                  placeholder="Ví dụ: 0912345678"
+                  value={customerPhone}
+                  onChange={e => setCustomerPhone(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="customer-notes">Ghi chú thêm (Tùy chọn)</Label>
-                <textarea 
-                  id="customer-notes" 
+                <textarea
+                  id="customer-notes"
                   className="flex min-h-[80px] w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:border-transparent disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Yêu cầu thêm về sân bãi, dụng cụ..." 
+                  placeholder="Yêu cầu thêm về sân bãi, dụng cụ..."
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
                 />
               </div>
             </CardContent>
@@ -137,13 +161,12 @@ export function PaymentPage() {
               <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                 <div className="space-y-4">
                   {/* Tại sân */}
-                  <Label 
-                    htmlFor="cash" 
-                    className={`flex items-center space-x-4 border-2 rounded-xl p-4 cursor-pointer transition-all ${
-                      paymentMethod === "cash" 
-                        ? "border-blue-600 bg-blue-50/50" 
-                        : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
-                    }`}
+                  <Label
+                    htmlFor="cash"
+                    className={`flex items-center space-x-4 border-2 rounded-xl p-4 cursor-pointer transition-all ${paymentMethod === "cash"
+                      ? "border-blue-600 bg-blue-50/50"
+                      : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
+                      }`}
                   >
                     <RadioGroupItem value="cash" id="cash" className={paymentMethod === "cash" ? "text-blue-600 border-blue-600" : ""} />
                     <div className="flex-1 flex items-center gap-3">
@@ -161,13 +184,12 @@ export function PaymentPage() {
                   </Label>
 
                   {/* MoMo */}
-                  <Label 
-                    htmlFor="momo" 
-                    className={`flex items-center space-x-4 border-2 rounded-xl p-4 cursor-pointer transition-all ${
-                      paymentMethod === "momo" 
-                        ? "border-blue-600 bg-blue-50/50" 
-                        : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
-                    }`}
+                  <Label
+                    htmlFor="momo"
+                    className={`flex items-center space-x-4 border-2 rounded-xl p-4 cursor-pointer transition-all ${paymentMethod === "momo"
+                      ? "border-blue-600 bg-blue-50/50"
+                      : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
+                      }`}
                   >
                     <RadioGroupItem value="momo" id="momo" className={paymentMethod === "momo" ? "text-blue-600 border-blue-600" : ""} />
                     <div className="flex-1 flex items-center gap-3">
@@ -185,13 +207,12 @@ export function PaymentPage() {
                   </Label>
 
                   {/* VNPay */}
-                  <Label 
-                    htmlFor="vnpay" 
-                    className={`flex items-center space-x-4 border-2 rounded-xl p-4 cursor-pointer transition-all ${
-                      paymentMethod === "vnpay" 
-                        ? "border-blue-600 bg-blue-50/50" 
-                        : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
-                    }`}
+                  <Label
+                    htmlFor="vnpay"
+                    className={`flex items-center space-x-4 border-2 rounded-xl p-4 cursor-pointer transition-all ${paymentMethod === "vnpay"
+                      ? "border-blue-600 bg-blue-50/50"
+                      : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
+                      }`}
                   >
                     <RadioGroupItem value="vnpay" id="vnpay" className={paymentMethod === "vnpay" ? "text-blue-600 border-blue-600" : ""} />
                     <div className="flex-1 flex items-center gap-3">

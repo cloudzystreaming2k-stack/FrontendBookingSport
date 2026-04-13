@@ -12,33 +12,36 @@ import {
   Clock,
   Check,
   X,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Separator } from "../ui/separator";
-import { Booking, mockCourts } from "../../data/mockData";
 
 interface BookingDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  booking: Booking | null;
-  onConfirm?: (id: string) => void;
-  onCancel?: (id: string) => void;
+  booking: any | null; // Using any for APIBooking
   onStatusChange?: (id: string, status: string) => void;
+  onPaymentConfirm?: (id: string, amount: number, method: string) => void;
 }
 
 export function BookingDetailModal({
   open,
   onOpenChange,
   booking,
-  onConfirm,
-  onCancel,
   onStatusChange,
+  onPaymentConfirm,
 }: BookingDetailModalProps) {
   if (!booking) return null;
 
-  const court = mockCourts.find((c) => c.id === booking.courtId);
+  // Get court data from API response (booking.courtId is fully populated)
+  const court = booking.courtId;
+  const courtType = court?.typeId;
+
+  // Get image URL (prefer mainImage, fallback to first in images array)
+  const courtImageUrl = court?.mainImage || court?.images?.[0];
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -108,9 +111,20 @@ export function BookingDetailModal({
         return "Chuyển khoản ngân hàng";
       case "card":
         return "Thẻ tín dụng/ghi nợ";
+      case "cash":
+        return "Tiền mặt tại sân";
       default:
-        return "Chưa thanh toán";
+        return "Chưa xác định";
     }
+  };
+
+  const getCourtTypeName = (type: any): string => {
+    // type là courtType object từ API populate
+    if (type && typeof type === "object" && type.name) {
+      return type.name;
+    }
+    // Fallback - không có data
+    return "Loại sân";
   };
 
   return (
@@ -120,7 +134,7 @@ export function BookingDetailModal({
           <div className="flex items-start justify-between">
             <div>
               <DialogTitle className="text-2xl">Chi tiết đơn đặt sân</DialogTitle>
-              <p className="text-sm text-gray-500 mt-1">Mã đặt sân: {booking.id}</p>
+              <p className="text-sm text-gray-500 mt-1">Mã đặt sân: {booking.bookingCode || booking._id}</p>
             </div>
             <div className="flex items-center gap-2">
               {getStatusIcon(booking.status)}
@@ -140,38 +154,48 @@ export function BookingDetailModal({
             </h3>
             {court && (
               <div className="border rounded-lg overflow-hidden">
-                <div className="relative h-48">
-                  <img
-                    src={court.images[0]}
-                    alt={court.name}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute bottom-3 left-3">
-                    <Badge className="bg-white/90 text-gray-900 border-0">
-                      {court.type === "pickleball"
-                        ? "Pickleball"
-                        : court.type === "badminton"
-                        ? "Cầu lông"
-                        : court.type === "basketball"
-                        ? "Bóng rổ"
-                        : court.type === "tennis"
-                        ? "Tennis"
-                        : "Bóng chuyền"}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="p-4 bg-gray-50">
-                  <h4 className="font-bold text-lg mb-1">{booking.courtName}</h4>
-                  <p className="text-sm text-gray-600">{court.address}</p>
-                  <div className="flex items-center gap-4 mt-2 text-sm">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      <span className="font-semibold">{court.rating}</span>
-                      <span className="text-gray-500">({court.reviewCount} đánh giá)</span>
+                {/* Court Image */}
+                <div className="relative h-48 bg-gray-200 flex items-center justify-center overflow-hidden">
+                  {courtImageUrl ? (
+                    <img
+                      src={courtImageUrl}
+                      alt={court.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback if image fails to load
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
+                      <ImageIcon className="w-8 h-8" />
+                      <span className="text-sm">Chưa có ảnh sân</span>
                     </div>
-                    <span className="text-gray-400">•</span>
-                    <span className="text-gray-600">Mã sân: {court.code}</span>
-                  </div>
+                  )}
+
+                  {/* Court Type Badge */}
+                  {courtType && (
+                    <div className="absolute bottom-3 left-3">
+                      <Badge
+                        className="bg-white/90 text-gray-900 border-0 font-medium"
+                        style={{
+                          backgroundColor: courtType?.color || '#ffffff',
+                          color: courtType?.color ? '#ffffff' : '#111827'
+                        }}
+                      >
+                        {getCourtTypeName(courtType)}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+
+                {/* Court Info */}
+                <div className="p-4 bg-gray-50">
+                  <h4 className="font-bold text-lg mb-1">{court.name}</h4>
+                  <p className="text-sm text-gray-600 mb-2">{court.address}</p>
+                  {court.code && (
+                    <p className="text-xs text-gray-500">Mã sân: <span className="font-mono font-semibold">{court.code}</span></p>
+                  )}
                 </div>
               </div>
             )}
@@ -198,12 +222,13 @@ export function BookingDetailModal({
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
                 <p className="text-xs text-blue-600 font-medium mb-1 flex items-center gap-1">
                   <Clock className="w-3 h-3" />
-                  Giờ chơi
+                  Giờ chơi (Các Slot)
                 </p>
-                <p className="text-sm font-bold text-gray-900">
-                  {booking.startTime} - {booking.endTime}
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5">({booking.hours} giờ)</p>
+                {booking.slots?.map((slot: any, idx: number) => (
+                  <p key={idx} className="text-sm font-bold text-gray-900">
+                    {slot.startTime} - {slot.endTime} <span className="font-normal text-xs text-gray-500">({slot.price?.toLocaleString()}đ)</span>
+                  </p>
+                ))}
               </div>
               <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
                 <p className="text-xs text-purple-600 font-medium mb-1">Ngày đặt</p>
@@ -237,8 +262,8 @@ export function BookingDetailModal({
                       booking.paymentStatus === "paid"
                         ? "bg-green-100 text-green-800"
                         : booking.paymentStatus === "pending"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-gray-100 text-gray-800"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-gray-100 text-gray-800"
                     }
                   >
                     {getPaymentStatusLabel(booking.paymentStatus)}
@@ -247,7 +272,7 @@ export function BookingDetailModal({
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Phương thức thanh toán</p>
                   <p className="text-sm font-medium text-gray-900">
-                    {getPaymentMethodLabel(booking.paymentMethod)}
+                    {getPaymentMethodLabel(booking.preferredPaymentMethod || booking.paymentMethod)}
                   </p>
                 </div>
               </div>
@@ -256,18 +281,20 @@ export function BookingDetailModal({
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Giá thuê sân ({booking.hours} giờ)</span>
-                  <span className="font-medium">{booking.totalPrice.toLocaleString()}đ</span>
+                  <span className="text-gray-600">Giá trị đơn</span>
+                  <span className="font-medium">{booking.totalPrice?.toLocaleString()}đ</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Phí dịch vụ</span>
-                  <span className="font-medium">0đ</span>
-                </div>
+                {booking.discountAmount > 0 && (
+                  <div className="flex items-center justify-between text-sm text-green-600">
+                    <span>Giảm giá ({booking.discountCode})</span>
+                    <span className="font-medium">-{booking.discountAmount?.toLocaleString()}đ</span>
+                  </div>
+                )}
                 <Separator className="my-2" />
                 <div className="flex items-center justify-between">
-                  <span className="text-base font-semibold">Tổng cộng</span>
+                  <span className="text-base font-semibold">Tổng thu</span>
                   <span className="text-xl font-bold text-teal-600">
-                    {booking.totalPrice.toLocaleString()}đ
+                    {booking.finalPrice?.toLocaleString()}đ
                   </span>
                 </div>
               </div>
@@ -286,26 +313,26 @@ export function BookingDetailModal({
                   <User className="w-4 h-4 text-gray-400" />
                   <div>
                     <p className="text-xs text-gray-500">Họ và tên</p>
-                    <p className="text-sm font-medium">{booking.userName}</p>
+                    <p className="text-sm font-medium">{booking.customerName}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
-                    ID: {booking.userId}
+                    Người đặt ({booking.user?.role === 'admin' ? 'Admin' : 'Khách'})
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Mail className="w-4 h-4 text-gray-400" />
                   <div>
-                    <p className="text-xs text-gray-500">Email</p>
-                    <p className="text-sm font-medium">customer@example.com</p>
+                    <p className="text-xs text-gray-500">Email TK</p>
+                    <p className="text-sm font-medium">{booking.user?.email || 'N/A'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Phone className="w-4 h-4 text-gray-400" />
                   <div>
-                    <p className="text-xs text-gray-500">Số điện thoại</p>
-                    <p className="text-sm font-medium">0901234567</p>
+                    <p className="text-xs text-gray-500">Số điện thoại liên hệ</p>
+                    <p className="text-sm font-medium">{booking.customerPhone}</p>
                   </div>
                 </div>
               </div>
@@ -319,8 +346,7 @@ export function BookingDetailModal({
                 <Button
                   className="flex-1 bg-teal-600 hover:bg-teal-700"
                   onClick={() => {
-                    onConfirm?.(booking.id);
-                    onOpenChange(false);
+                    onStatusChange?.(booking._id, "confirmed");
                   }}
                 >
                   <Check className="w-4 h-4 mr-2" />
@@ -330,8 +356,9 @@ export function BookingDetailModal({
                   variant="destructive"
                   className="flex-1"
                   onClick={() => {
-                    onCancel?.(booking.id);
-                    onOpenChange(false);
+                    if (window.confirm('Bạn có chắc chắn muốn hủy đơn đặt sân này?')) {
+                      onStatusChange?.(booking._id, "cancelled");
+                    }
                   }}
                 >
                   <X className="w-4 h-4 mr-2" />
@@ -339,12 +366,33 @@ export function BookingDetailModal({
                 </Button>
               </>
             )}
-            {booking.status === "confirmed" && booking.paymentStatus === "pending" && (
-              <Button className="flex-1 bg-yellow-600 hover:bg-yellow-700">
+
+            {booking.status === "confirmed" && booking.paymentStatus === "unpaid" && (
+              <Button
+                className="flex-1 bg-yellow-600 hover:bg-yellow-700"
+                onClick={() => {
+                  if (window.confirm(`Xác nhận KHÁCH ĐÃ THANH TOÁN ${booking.finalPrice.toLocaleString()}đ ?`)) {
+                    onPaymentConfirm?.(booking._id, booking.finalPrice, booking.preferredPaymentMethod || "cash");
+                  }
+                }}
+              >
                 <CreditCard className="w-4 h-4 mr-2" />
-                Xác nhận thanh toán
+                Đã thu tiền ({booking.finalPrice.toLocaleString()}đ)
               </Button>
             )}
+
+            {booking.status === "confirmed" && booking.paymentStatus === "paid" && (
+              <Button
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                onClick={() => {
+                  onStatusChange?.(booking._id, "completed");
+                }}
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Hoàn thành đơn (Khách đã chơi xong)
+              </Button>
+            )}
+
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Đóng
             </Button>

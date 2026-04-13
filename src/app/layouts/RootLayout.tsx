@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from "react-router";
 import { Button } from "../components/ui/button";
-import { User, Menu, X, LogOut, Instagram, Facebook, Twitter, FacebookIcon } from "lucide-react";
+import { User, Menu, X, LogOut, Instagram, Facebook, Twitter, FacebookIcon, Bell } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -13,10 +13,33 @@ import {
 } from "../components/ui/dropdown-menu";
 import { toast } from "sonner";
 
+// Mock notification data
+const mockNotifications = [
+  {
+    id: 1,
+    title: "Đặt sân thành công",
+    message: "Lịch đặt sân của bạn vào lúc 14:00 hôm nay đã được xác nhận",
+    time: "5 phút trước",
+    read: false,
+    type: "booking",
+  },
+  {
+    id: 2,
+    title: "Thanh toán thành công",
+    message: "Thanh toán 250.000đ cho sân bóng đá Riverside",
+    time: "1 giờ trước",
+    read: false,
+    type: "payment",
+  }
+];
+
 export function RootLayout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState(mockNotifications);
   const { user, isAuthenticated, logout } = useAuth();
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleLogout = () => {
     logout();
@@ -51,11 +74,10 @@ export function RootLayout() {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`text-sm font-medium transition-colors hover:text-blue-600 ${
-                    location.pathname === item.path
-                      ? "text-blue-600"
-                      : "text-gray-600"
-                  }`}
+                  className={`text-sm font-medium transition-colors hover:text-blue-600 ${location.pathname === item.path
+                    ? "text-blue-600"
+                    : "text-gray-600"
+                    }`}
                 >
                   {item.label}
                 </Link>
@@ -66,6 +88,72 @@ export function RootLayout() {
             <div className="flex items-center gap-3">
               {isAuthenticated ? (
                 <>
+                  {/* Notification Bell */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="relative hidden sm:flex"
+                      >
+                        <Bell className="w-5 h-5" />
+                        {unreadCount > 0 && (
+                          <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-semibold">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-80">
+                      <DropdownMenuLabel className="flex justify-between items-center">
+                        <span>Thông báo</span>
+                        {unreadCount > 0 && (
+                          <span className="text-xs text-red-600 font-semibold">
+                            {unreadCount} chưa đọc
+                          </span>
+                        )}
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <div className="max-h-96 overflow-y-auto">
+                        {notifications.length > 0 ? (
+                          notifications.map((notification) => (
+                            <div
+                              key={notification.id}
+                              className={`flex flex-col px-3 py-3 cursor-pointer border-b last:border-b-0 hover:bg-gray-50 transition-colors ${!notification.read ? "bg-blue-50" : ""
+                                }`}
+                            >
+                              <div className="flex justify-between gap-2">
+                                <div className="flex-1">
+                                  <p className="font-semibold text-sm text-gray-900">
+                                    {notification.title}
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                    {notification.message}
+                                  </p>
+                                </div>
+                                {!notification.read && (
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-1 flex-shrink-0" />
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-500 mt-2">
+                                {notification.time}
+                              </p>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-3 py-8 text-center text-sm text-gray-500">
+                            Không có thông báo
+                          </div>
+                        )}
+                      </div>
+                      <DropdownMenuSeparator />
+                      <div className="px-3 py-2 text-center">
+                        <button className="text-blue-600 font-medium text-sm hover:text-blue-700 transition-colors">
+                          Xem tất cả thông báo
+                        </button>
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm" className="hidden sm:flex items-center gap-2">
@@ -84,6 +172,11 @@ export function RootLayout() {
                       <DropdownMenuItem asChild>
                         <Link to="/profile" className="w-full cursor-pointer">
                           Hồ sơ của tôi
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/bookings" className="w-full cursor-pointer">
+                          Lịch sử đặt sân
                         </Link>
                       </DropdownMenuItem>
                       {user?.role === "admin" && (
@@ -125,7 +218,7 @@ export function RootLayout() {
                   </Link>
                 </>
               )}
-              
+
               {/* Mobile menu button */}
               <button
                 className="md:hidden p-2"
@@ -145,11 +238,10 @@ export function RootLayout() {
                     key={item.path}
                     to={item.path}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`px-3 py-2 rounded-md text-sm font-medium ${
-                      location.pathname === item.path
-                        ? "bg-blue-50 text-blue-600"
-                        : "text-gray-600 hover:bg-gray-100"
-                    }`}
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${location.pathname === item.path
+                      ? "bg-blue-50 text-blue-600"
+                      : "text-gray-600 hover:bg-gray-100"
+                      }`}
                   >
                     {item.label}
                   </Link>

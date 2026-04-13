@@ -4,13 +4,13 @@ import {
   ChevronLeft, ChevronRight, Clock,
   Heart, MapPin, Share2, Star, Users, Zap,
 } from "lucide-react";
-import { Badge } from "../components/ui/badge";
+import { Badge } from "../../components/ui/badge";
 import { toast } from "sonner";
 
-import { useAuth } from "../contexts/AuthContext";
-import { useCourtDetail, formatDisplayDate } from "./CourtDetail/useCourtDetail";
-import { BookingPanel, BookingSummary } from "./CourtDetail/BookingPanel";
-import { CourtInfoTabs } from "./CourtDetail/CourtInfoTabs";
+import { useAuth } from "../../contexts/AuthContext";
+import { useCourtDetail, formatDisplayDate } from "./useCourtDetail";
+import { BookingPanel, BookingSummary } from "./BookingPanel";
+import { CourtInfoTabs } from "./CourtInfoTabs";
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 function CourtDetailSkeleton() {
@@ -89,18 +89,20 @@ export function CourtDetailPage() {
       toast.error("Vui lòng chọn ít nhất 1 khung giờ.");
       return;
     }
-    const bookingId = `BK${Math.floor(Math.random() * 1_000_000).toString().padStart(6, "0")}`;
+
     const payload = {
       courtId: court._id,
       courtName: court.name,
-      date: formatDisplayDate(selectedDay),
+      displayDate: formatDisplayDate(selectedDay),
+      date: selectedDay,
       time: groupedSelectedSlots.map((g) => `${g.startTime} - ${g.endTime}`).join(", "),
+      slots: groupedSelectedSlots,
       hours: selectedSlots.length * 0.5,
       totalPrice: finalPrice,
       discountAmount,
       originalPrice: totalPrice,
     };
-    navigate(`/payment/${bookingId}`, { state: payload });
+    navigate("/payment", { state: payload });
   };
 
   // ── Image nav ────────────────────────────────────────────────────────────
