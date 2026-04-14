@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/
 import { Separator } from "../components/ui/separator";
 import { mockCourts, Booking } from "../data/mockData";
 import { useAuth } from "../contexts/AuthContext";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import api from "../lib/api";
@@ -45,19 +45,31 @@ export interface APIBooking {
 type TabType = "account" | "favorites" | "bookings";
 
 export function ProfilePage() {
-  const { user, isAuthenticated, updateProfile } = useAuth();
+  const { user, isAuthenticated, isLoading, updateProfile } = useAuth();
   const navigate = useNavigate();
+    const location = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>("account");
 
   // Booking state - from API
   const [userBookings, setUserBookings] = useState<APIBooking[]>([]);
+  const [bookingTotal, setBookingTotal] = useState(0);
+  const [bookingPage, setBookingPage] = useState(1);
+  const [bookingTotalPages, setBookingTotalPages] = useState(1);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Chỉ redirect nếu đã load xong auth context mà vẫn không authenticated
+    if (!isLoading && !isAuthenticated) {
       navigate("/login", { state: { from: { pathname: "/profile" } } });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isLoading, navigate]);
+
+  // Set active tab from navigation state
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state?.activeTab]);
 
   // Fetch user bookings from API when tab becomes active
   useEffect(() => {
@@ -66,11 +78,14 @@ export function ProfilePage() {
     }
   }, [activeTab, isAuthenticated]);
 
-  const fetchUserBookings = async () => {
+  const fetchUserBookings = async (page = 1) => {
     setIsLoadingBookings(true);
     try {
-      const response = await api.get("/bookings/my");
-      setUserBookings(response.data || []);
+      const response = await api.get(`/bookings/my?page=${page}&limit=5`);
+      setUserBookings(response.data.bookings || []);
+      setBookingTotal(response.data.total || 0);
+      setBookingTotalPages(response.data.totalPages || 1);
+      setBookingPage(page);
     } catch (error) {
       toast.error("Không thể tải lịch sử đặt sân");
       console.error(error);
@@ -114,6 +129,18 @@ export function ProfilePage() {
       });
     }
   }, [user]);
+
+  // Show loading state while auth is initializing
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return null;
@@ -306,7 +333,7 @@ export function ProfilePage() {
               <div className="space-y-3 mb-6 pb-6 border-b">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Tổng đặt sân</span>
-                  <span className="font-bold text-blue-600">{userBookings.length}</span>
+                  <span className="font-bold text-blue-600">{bookingTotal}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Hoàn thành</span>
@@ -329,8 +356,8 @@ export function ProfilePage() {
                 <button
                   onClick={() => setActiveTab("account")}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === "account"
-                      ? "bg-blue-600 text-white shadow-md"
-                      : "text-gray-700 hover:bg-gray-100"
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "text-gray-700 hover:bg-gray-100"
                     }`}
                 >
                   <User className="w-4 h-4" />
@@ -339,8 +366,8 @@ export function ProfilePage() {
                 <button
                   onClick={() => setActiveTab("favorites")}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === "favorites"
-                      ? "bg-blue-600 text-white shadow-md"
-                      : "text-gray-700 hover:bg-gray-100"
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "text-gray-700 hover:bg-gray-100"
                     }`}
                 >
                   <Heart className="w-4 h-4" />
@@ -355,8 +382,8 @@ export function ProfilePage() {
                 <button
                   onClick={() => setActiveTab("bookings")}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === "bookings"
-                      ? "bg-blue-600 text-white shadow-md"
-                      : "text-gray-700 hover:bg-gray-100"
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "text-gray-700 hover:bg-gray-100"
                     }`}
                 >
                   <Calendar className="w-4 h-4" />
@@ -705,6 +732,33 @@ export function ProfilePage() {
                     <Button onClick={() => navigate("/courts")}>
                       Đặt sân ngay
                     </Button>
+                  </div>
+                )}
+
+                {/* Pagination Bar */}
+                {bookingTotalPages > 1 && (
+                  <div className="flex items-center justify-between pt-4 mt-6 border-t px-2">
+                    <p className="text-sm text-gray-600">
+                      Tổng <span className="font-semibold text-gray-900">{bookingTotal}</span> đơn (Trang {bookingPage}/{bookingTotalPages})
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchUserBookings(bookingPage - 1)}
+                        disabled={bookingPage <= 1 || isLoadingBookings}
+                      >
+                        Trước
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchUserBookings(bookingPage + 1)}
+                        disabled={bookingPage >= bookingTotalPages || isLoadingBookings}
+                      >
+                        Sau
+                      </Button>
+                    </div>
                   </div>
                 )}
               </CardContent>

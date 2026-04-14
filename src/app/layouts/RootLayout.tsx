@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from "react-router";
+import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
 import { User, Menu, X, LogOut, Instagram, Facebook, Twitter, FacebookIcon, Bell } from "lucide-react";
 import { useState } from "react";
@@ -35,6 +35,7 @@ const mockNotifications = [
 
 export function RootLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState(mockNotifications);
   const { user, isAuthenticated, logout } = useAuth();
@@ -174,10 +175,11 @@ export function RootLayout() {
                           Hồ sơ của tôi
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/bookings" className="w-full cursor-pointer">
-                          Lịch sử đặt sân
-                        </Link>
+                      <DropdownMenuItem
+                        onClick={() => navigate("/profile", { state: { activeTab: "bookings" } })}
+                        className="w-full cursor-pointer"
+                      >
+                        Lịch sử đặt sân
                       </DropdownMenuItem>
                       {user?.role === "admin" && (
                         <DropdownMenuItem asChild>

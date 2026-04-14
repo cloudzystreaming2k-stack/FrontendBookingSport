@@ -114,92 +114,149 @@ function sameDay(a: Date, b: Date) {
 }
 
 export function AdminBookings() {
-  const [bookings, setBookings] = useState<APIBooking[]>([]);
-  const [courts, setCourts] = useState<APICourt[]>([]);
+  // === LIST VIEW STATE ===
+  const [listBookings, setListBookings] = useState<APIBooking[]>([]);
+  const [listTotal, setListTotal] = useState(0);
+  const [listTotalPages, setListTotalPages] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+
+  // === GRID VIEW STATE ===
+  const [gridBookings, setGridBookings] = useState<APIBooking[]>([]);
+  const [isGridLoading, setIsGridLoading] = useState(false);
+
+  // === STATS STATE ===
+  const [stats, setStats] = useState({ total: 0, pending: 0, confirmed: 0, completed: 0 });
+
+  // === COURTS STATE ===
+  const [courts, setCourts] = useState<APICourt[]>([]);
+
+  // === FILTER STATE ===
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  // Time grid state
+  // === TIME GRID STATE ===
   const today = new Date();
   const [gridDate, setGridDate] = useState<Date>(today);
   const [selectedCourtType, setSelectedCourtType] = useState<string>("all");
 
-  // Detail modal state
+  // === DETAIL MODAL STATE ===
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailBooking, setDetailBooking] = useState<APIBooking | null>(null);
 
-  const fetchBookingsAndCourts = useCallback(async () => {
+  // Fetch danh sách đơn cho Tab Danh Sách (có phân trang + filter)
+  const fetchListBookings = useCallback(async (
+    page = 1,
+    overrideFilters?: { search?: string; status?: string; dateFrom?: string; dateTo?: string }
+  ) => {
     setIsLoading(true);
+    const f = overrideFilters ?? { search: searchQuery, status: statusFilter, dateFrom, dateTo };
     try {
-      const [bookingsRes, courtsRes] = await Promise.all([
-        api.get("/admin/bookings"),
-        api.get("/admin/courts")
-      ]);
-      setBookings(bookingsRes.data.bookings || []);
-      setCourts(courtsRes.data || []);
+      const params = new URLSearchParams({ page: String(page), limit: '10' });
+      if (f.status && f.status !== 'all') params.append('status', f.status);
+      if (f.search?.trim()) params.append('search', f.search.trim());
+      if (f.dateFrom) params.append('dateFrom', f.dateFrom);
+      if (f.dateTo) params.append('dateTo', f.dateTo);
+
+      const res = await api.get(`/admin/bookings?${params}`);
+      setListBookings(res.data.bookings || []);
+      setListTotal(res.data.total || 0);
+      setListTotalPages(res.data.totalPages || 1);
+      setCurrentPage(page);
     } catch {
-      toast.error("Không thể tải danh sách đơn đặt sân hoặc danh sách sân.");
+      toast.error("Không thể tải danh sách đơn đặt sân.");
     } finally {
       setIsLoading(false);
     }
+  }, [searchQuery, statusFilter, dateFrom, dateTo]);
+
+  // Fetch đơn cho Tab Lưới Thời Gian (chỉ theo ngày, lấy đủ không phân trang)
+  const fetchGridBookings = useCallback(async (date: Date) => {
+    setIsGridLoading(true);
+    try {
+      const dateStr = date.toISOString().split('T')[0]; // "2026-04-14"
+      const res = await api.get(`/admin/bookings?dateFrom=${dateStr}&dateTo=${dateStr}&limit=200`);
+      setGridBookings(res.data.bookings || []);
+    } catch {
+      toast.error("Không thể tải lưới thời gian.");
+    } finally {
+      setIsGridLoading(false);
+    }
   }, []);
 
+  // Fetch stats tổng (chính xác, không bị ảnh hưởng phân trang)
+  const fetchStats = useCallback(async () => {
+    try {
+      const [totalRes, pendingRes, confirmedRes, completedRes] = await Promise.all([
+        api.get('/admin/bookings?limit=1'),
+        api.get('/admin/bookings?status=pending&limit=1'),
+        api.get('/admin/bookings?status=confirmed&limit=1'),
+        api.get('/admin/bookings?status=completed&limit=1'),
+      ]);
+      setStats({
+        total: totalRes.data.total || 0,
+        pending: pendingRes.data.total || 0,
+        confirmed: confirmedRes.data.total || 0,
+        completed: completedRes.data.total || 0,
+      });
+    } catch { /* stats không hiện lỗi */ }
+  }, []);
+
+  // Fetch danh sách sân (dùng chung cho cả 2 tab)
+  const fetchCourts = useCallback(async () => {
+    try {
+      const res = await api.get("/admin/courts");
+      setCourts(res.data || []);
+    } catch { /* silent */ }
+  }, []);
+
+  // Load lần đầu
   useEffect(() => {
-    fetchBookingsAndCourts();
-  }, [fetchBookingsAndCourts]);
+    fetchListBookings(1);
+    fetchStats();
+    fetchGridBookings(today);
+    fetchCourts();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Calculate stats
-  const stats = useMemo(() => {
-    return {
-      total: bookings.length,
-      pending: bookings.filter((b) => b.status === "pending").length,
-      confirmed: bookings.filter((b) => b.status === "confirmed").length,
-      completed: bookings.filter((b) => b.status === "completed").length,
-    };
-  }, [bookings]);
+  // Khi đổi ngày Grid → fetch lại Grid
+  useEffect(() => {
+    fetchGridBookings(gridDate);
+  }, [gridDate, fetchGridBookings]);
 
-  // Filter bookings for list view
-  const filteredBookings = useMemo(() => {
-    return bookings.filter((b) => {
-      const q = searchQuery.toLowerCase();
-      const matchSearch =
-        !q ||
-        b.bookingCode?.toLowerCase().includes(q) ||
-        b.customerName?.toLowerCase().includes(q) ||
-        b.courtId?.name?.toLowerCase().includes(q);
-
-      const matchStatus = statusFilter === "all" || b.status === statusFilter;
-
-      const matchDateFrom = !dateFrom || b.date >= dateFrom;
-      const matchDateTo = !dateTo || b.date <= dateTo;
-
-      return matchSearch && matchStatus && matchDateFrom && matchDateTo;
-    });
-  }, [bookings, searchQuery, statusFilter, dateFrom, dateTo]);
-
-  // Filter courts for time grid
+  // Filter courts cho Grid view
   const filteredCourts = useMemo(() => {
     if (selectedCourtType === "all") return courts;
     return courts.filter((c) => c.typeId?._id === selectedCourtType || c.typeId?.name.toLowerCase().includes(selectedCourtType));
   }, [courts, selectedCourtType]);
 
-  // Get bookings for selected date
+  // dayBookings dùng gridBookings (độc lập với listBookings)
   const dayBookings = useMemo(() => {
-    return bookings.filter((b) => sameDay(new Date(b.date), gridDate));
-  }, [bookings, gridDate]);
+    return gridBookings.filter((b) => sameDay(new Date(b.date), gridDate));
+  }, [gridBookings, gridDate]);
 
-  // Actions
+  // === ACTIONS ===
+  const handleFilter = () => {
+    fetchListBookings(1); // Reset về trang 1 khi lọc mới
+  };
+
+  const handleReset = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setDateFrom("");
+    setDateTo("");
+    fetchListBookings(1, { search: '', status: 'all', dateFrom: '', dateTo: '' });
+    toast.success("Đã reset bộ lọc");
+  };
+
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
       await api.patch(`/admin/bookings/${id}/status`, { status: newStatus });
-      toast.success(`Đã cập nhật trạng thái đơn thành công.`);
-      fetchBookingsAndCourts(); // Tải lại dữ liệu
-
-      // Nếu đang mở modal mà update status thì cũng update modal
-      if (detailBooking && detailBooking._id === id) {
+      toast.success("Đã cập nhật trạng thái đơn thành công.");
+      fetchListBookings(currentPage); // Giữ nguyên trang đang xem
+      fetchStats();                   // Cập nhật stats
+      if (detailBooking?._id === id) {
         setDetailBooking(prev => prev ? { ...prev, status: newStatus as any } : null);
       }
     } catch (err: any) {
@@ -211,22 +268,14 @@ export function AdminBookings() {
     try {
       await api.post(`/admin/payments`, { bookingId: id, amount, paymentMethod: method });
       toast.success("Đã xác nhận thanh toán thành công!");
-      fetchBookingsAndCourts(); // Reload list
-
-      if (detailBooking && detailBooking._id === id) {
+      fetchListBookings(currentPage);
+      fetchStats();
+      if (detailBooking?._id === id) {
         setDetailBooking(prev => prev ? { ...prev, paymentStatus: 'paid' } : null);
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Xác nhận thanh toán thất bại.");
     }
-  };
-
-  const handleReset = () => {
-    setSearchQuery("");
-    setStatusFilter("all");
-    setDateFrom("");
-    setDateTo("");
-    toast.success("Đã reset bộ lọc");
   };
 
   const prevDay = () => {
@@ -379,7 +428,7 @@ export function AdminBookings() {
 
                 {/* Buttons */}
                 <div className="flex gap-2">
-                  <Button className="bg-green-600 hover:bg-green-700">
+                  <Button className="bg-green-600 hover:bg-green-700" onClick={handleFilter}>
                     <Filter className="w-4 h-4 mr-2" />
                     Lọc
                   </Button>
@@ -425,14 +474,14 @@ export function AdminBookings() {
                           Đang tải dữ liệu...
                         </td>
                       </tr>
-                    ) : filteredBookings.length === 0 ? (
+                    ) : listBookings.length === 0 ? (
                       <tr>
                         <td colSpan={9} className="py-12 text-center text-gray-400">
                           Không tìm thấy đơn đặt sân phù hợp
                         </td>
                       </tr>
                     ) : (
-                      filteredBookings.map((booking) => (
+                      listBookings.map((booking) => (
                         <tr key={booking._id} className="border-b hover:bg-gray-50 transition-colors">
                           <td className="py-4 px-4">
                             <span className="text-sm font-medium text-blue-600">{booking.bookingCode || 'BK00?'}</span>
@@ -529,6 +578,38 @@ export function AdminBookings() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Pagination Bar */}
+          <div className="flex items-center justify-between px-2 py-1">
+            <p className="text-sm text-gray-600">
+              Tổng <span className="font-semibold text-gray-900">{listTotal}</span> đơn đặt sân
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchListBookings(currentPage - 1)}
+                disabled={currentPage <= 1 || isLoading}
+                className="gap-1"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Trước
+              </Button>
+              <span className="text-sm text-gray-700 px-3">
+                Trang <span className="font-semibold">{currentPage}</span> / {listTotalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchListBookings(currentPage + 1)}
+                disabled={currentPage >= listTotalPages || isLoading}
+                className="gap-1"
+              >
+                Sau
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
         </TabsContent>
 
         {/* TIME GRID VIEW */}
@@ -599,11 +680,11 @@ export function AdminBookings() {
           {/* Time Grid */}
           <Card className="border-0 shadow-sm">
             <CardContent className="p-0">
-              <div className="overflow-x-auto overflow-y-auto max-h-[500px] relative custom-scrollbar">
-                <div className="min-w-[800px]">
+              <div className="overflow-x-auto overflow-y-auto max-h-[600px] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+                <div className="min-w-max">
                   {/* Grid Header - Court Names */}
-                  <div className="grid border-b bg-gray-50 sticky top-0 z-10" style={{ gridTemplateColumns: "80px repeat(auto-fit, minmax(150px, 1fr))" }}>
-                    <div className="p-3 border-r font-semibold text-sm text-gray-700">Thời gian</div>
+                  <div className="grid border-b bg-gray-50 sticky top-0 z-10" style={{ gridTemplateColumns: `80px repeat(${filteredCourts.length}, 200px)` }}>
+                    <div className="p-3 border-r font-semibold text-sm text-gray-700 sticky left-0 bg-gray-50 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Thời gian</div>
                     {filteredCourts.map((court) => (
                       <div key={court._id} className="p-3 border-r text-center">
                         <p className="font-semibold text-sm text-gray-900">{court.name}</p>
