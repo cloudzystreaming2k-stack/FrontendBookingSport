@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
 import { User, Menu, X, LogOut, Instagram, Facebook, Twitter, FacebookIcon, Bell } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import {
   DropdownMenu,
@@ -12,35 +12,119 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { io, Socket } from "socket.io-client";
+import api from "../lib/api";
 
-// Mock notification data
-const mockNotifications = [
-  {
-    id: 1,
-    title: "Đặt sân thành công",
-    message: "Lịch đặt sân của bạn vào lúc 14:00 hôm nay đã được xác nhận",
-    time: "5 phút trước",
-    read: false,
-    type: "booking",
-  },
-  {
-    id: 2,
-    title: "Thanh toán thành công",
-    message: "Thanh toán 250.000đ cho sân bóng đá Riverside",
-    time: "1 giờ trước",
-    read: false,
-    type: "payment",
-  }
-];
+// ─── Notification Type ────────────────────────────────────────────────────────
+interface Notification {
+  _id: string | number;
+  title: string;
+  message: string;
+  type: string;
+  isRead: boolean;
+  createdAt?: string;
+}
+
+// Socket singleton — tạo 1 lần, dùng cả app
+const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const socketUrl = apiUrl.replace(/\/api$/, "");
+
+const socket: Socket = io(socketUrl, {
+  autoConnect: false, // Chỉ connect khi user đã đăng nhập
+});
 
 export function RootLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const { user, isAuthenticated, logout } = useAuth();
+  const socketAuthSent = useRef(false); // Tránh authenticate nhiều lần
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  // ─── Fetch thông báo cũ từ DB ───────────────────────────────────────────────
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get("/notifications/my");
+      setNotifications(res.data || []);
+    } catch {
+      // Silent — không hiện lỗi cho user
+    }
+  };
+
+  // ─── Socket.io lifecycle ────────────────────────────────────────────────────
+  useEffect(() => {
+    let handleConnect: () => void;
+
+    if (isAuthenticated) {
+      // Lấy token để authenticate socket
+      const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+
+      // Fetch lịch sử thông báo từ DB
+      fetchNotifications();
+
+      handleConnect = () => {
+        socket.emit("authenticate", token);
+      };
+
+      // Đăng ký sự kiện
+      socket.on("connect", handleConnect);
+
+      // Nếu đã connect rồi thì emit luôn
+      if (socket.connected) {
+        handleConnect();
+      } else {
+        socket.connect();
+      }
+
+      // Lắng nghe thông báo mới từ server
+      socket.on("new-notification", (data: Notification) => {
+        setNotifications((prev) => [data, ...prev]);
+        // Toast popup góc màn hình
+        toast.info(data.title, { description: data.message, duration: 5000 });
+      });
+    } else {
+      // User logout → ngắt socket, reset state
+      if (socket.connected) {
+        socket.disconnect();
+      }
+      socketAuthSent.current = false;
+      setNotifications([]);
+    }
+
+    return () => {
+      if (handleConnect) {
+        socket.off("connect", handleConnect);
+      }
+      socket.off("new-notification");
+    };
+  }, [isAuthenticated]);
+
+  // ─── Handlers ───────────────────────────────────────────────────────────────
+  const handleMarkOneRead = async (id: string | number) => {
+    // Cập nhật UI ngay lập tức (optimistic update)
+    setNotifications((prev) =>
+      prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+    );
+    try {
+      await api.patch(`/notifications/${id}/read`);
+    } catch {
+      // Nếu lỗi thì rollback
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, isRead: false } : n))
+      );
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    try {
+      await api.patch("/notifications/read-all");
+    } catch {
+      fetchNotifications(); // Rollback: fetch lại từ DB
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -109,9 +193,12 @@ export function RootLayout() {
                       <DropdownMenuLabel className="flex justify-between items-center">
                         <span>Thông báo</span>
                         {unreadCount > 0 && (
-                          <span className="text-xs text-red-600 font-semibold">
-                            {unreadCount} chưa đọc
-                          </span>
+                          <button
+                            onClick={handleMarkAllRead}
+                            className="text-xs text-blue-600 font-medium hover:text-blue-700 transition-colors"
+                          >
+                            Đánh dấu tất cả đã đọc
+                          </button>
                         )}
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
@@ -119,9 +206,11 @@ export function RootLayout() {
                         {notifications.length > 0 ? (
                           notifications.map((notification) => (
                             <div
-                              key={notification.id}
-                              className={`flex flex-col px-3 py-3 cursor-pointer border-b last:border-b-0 hover:bg-gray-50 transition-colors ${!notification.read ? "bg-blue-50" : ""
-                                }`}
+                              key={notification._id}
+                              onClick={() => handleMarkOneRead(notification._id)}
+                              className={`flex flex-col px-3 py-3 cursor-pointer border-b last:border-b-0 hover:bg-gray-50 transition-colors ${
+                                !notification.isRead ? "bg-blue-50" : ""
+                              }`}
                             >
                               <div className="flex justify-between gap-2">
                                 <div className="flex-1">
@@ -132,26 +221,23 @@ export function RootLayout() {
                                     {notification.message}
                                   </p>
                                 </div>
-                                {!notification.read && (
+                                {!notification.isRead && (
                                   <div className="w-2 h-2 bg-blue-500 rounded-full mt-1 flex-shrink-0" />
                                 )}
                               </div>
-                              <p className="text-xs text-gray-500 mt-2">
-                                {notification.time}
-                              </p>
+                              {notification.createdAt && (
+                                <p className="text-xs text-gray-400 mt-2">
+                                  {new Date(notification.createdAt).toLocaleString("vi-VN")}
+                                </p>
+                              )}
                             </div>
                           ))
                         ) : (
                           <div className="px-3 py-8 text-center text-sm text-gray-500">
-                            Không có thông báo
+                            <Bell className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                            Chưa có thông báo nào
                           </div>
                         )}
-                      </div>
-                      <DropdownMenuSeparator />
-                      <div className="px-3 py-2 text-center">
-                        <button className="text-blue-600 font-medium text-sm hover:text-blue-700 transition-colors">
-                          Xem tất cả thông báo
-                        </button>
                       </div>
                     </DropdownMenuContent>
                   </DropdownMenu>
