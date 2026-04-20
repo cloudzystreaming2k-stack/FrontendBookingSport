@@ -26,7 +26,7 @@ import { AdminBookings } from "./pages/admin/AdminBookings";
 import { AdminUsers } from "./pages/admin/users/AdminUsers";
 import { AdminPromotions } from "./pages/admin/AdminPromotions";
 import { AdminReviews } from "./pages/admin/AdminReviews";
-import { AdminNews } from "./pages/admin/AdminNews";
+import { AdminNews } from "./pages/admin/news/AdminNews";
 import { AdminCourtTypes } from "./pages/admin/court-types/AdminCourtTypes";
 import { AdminFacilities } from "./pages/admin/facilities/AdminFacilities";
 import { AdminLoginPage } from "./pages/admin/login/AdminLoginPage";
@@ -56,7 +56,7 @@ export const router = createBrowserRouter([
       { path: "booking-success/:bookingId", Component: BookingSuccessPage },
       { path: "profile", Component: ProfilePage },
       { path: "news", Component: NewsPage },
-      { path: "news/:id", Component: NewsDetailPage },
+      { path: "news/:slug", Component: NewsDetailPage },
       { path: "about", Component: AboutPage },
       { path: "contact", Component: ContactPage },
     ],
