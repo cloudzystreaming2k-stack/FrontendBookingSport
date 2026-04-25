@@ -18,6 +18,7 @@ import { AboutPage } from "./pages/AboutPage";
 import { ContactPage } from "./pages/ContactPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { WeatherPage } from "./pages/WeatherPage";
 
 // Admin Pages
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
@@ -59,6 +60,7 @@ export const router = createBrowserRouter([
       { path: "news/:slug", Component: NewsDetailPage },
       { path: "about", Component: AboutPage },
       { path: "contact", Component: ContactPage },
+      { path: "weather", Component: WeatherPage },
     ],
   },
   {

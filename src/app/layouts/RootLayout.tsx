@@ -135,6 +135,7 @@ export function RootLayout() {
     { path: "/", label: "Trang chủ" },
     { path: "/courts", label: "Tìm sân" },
     { path: "/news", label: "Tin tức" },
+    { path: "/weather", label: "Thời tiết" },
     { path: "/about", label: "Giới thiệu" },
     { path: "/contact", label: "Liên hệ" },
   ];
