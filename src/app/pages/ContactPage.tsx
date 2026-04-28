@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { MapPin, Phone, Mail, Clock, Send, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
+import api from "../lib/api";
 
 export function ContactPage() {
   const [formData, setFormData] = useState({
@@ -25,25 +26,26 @@ export function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email || !formData.phone || !formData.subject || !formData.message) {
-      toast.error("Vui lòng điền đầy đủ thông tin");
+    if (!formData.name || !formData.email || !formData.subject || !formData.message) {
+      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
       return;
     }
 
     setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      toast.success("Gửi tin nhắn thành công! Chúng tôi sẽ liên hệ với bạn sớm nhất.");
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        subject: "",
-        message: "",
+    try {
+      await api.post("/contacts", {
+        name: formData.name,
+        email: formData.email,
+        subject: formData.subject,
+        message: formData.message,
       });
+      toast.success("Gửi tin nhắn thành công! Chúng tôi sẽ phản hồi qua email của bạn sớm nhất.");
+      setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Gửi tin nhắn thất bại. Vui lòng thử lại.");
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -221,13 +223,13 @@ export function ContactPage() {
                           <SelectValue placeholder="Chọn chủ đề" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="general">Câu hỏi chung</SelectItem>
-                          <SelectItem value="booking">Đặt sân</SelectItem>
-                          <SelectItem value="payment">Thanh toán</SelectItem>
-                          <SelectItem value="technical">Hỗ trợ kỹ thuật</SelectItem>
-                          <SelectItem value="partnership">Hợp tác</SelectItem>
-                          <SelectItem value="complaint">Khiếu nại</SelectItem>
-                          <SelectItem value="other">Khác</SelectItem>
+                          <SelectItem value="Câu hỏi chung">Câu hỏi chung</SelectItem>
+                          <SelectItem value="Đặt sân">Đặt sân</SelectItem>
+                          <SelectItem value="Thanh toán">Thanh toán</SelectItem>
+                          <SelectItem value="Hỗ trợ kỹ thuật">Hỗ trợ kỹ thuật</SelectItem>
+                          <SelectItem value="Hợp tác">Hợp tác</SelectItem>
+                          <SelectItem value="Khiếu nại">Khiếu nại</SelectItem>
+                          <SelectItem value="Khác">Khác</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

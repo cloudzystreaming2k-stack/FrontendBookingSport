@@ -36,6 +36,7 @@ import { OwnerDashboard } from "./pages/owner/OwnerDashboard";
 import { AdminOwners } from "./pages/admin/AdminOwners";
 import { GuestRoute } from "./components/GuestRoute";
 import { AdminCourtPricing } from "./pages/admin/court-pricing/AdminCourtPricing";
+import { AdminContacts } from "./pages/admin/AdminContacts";
 
 export const router = createBrowserRouter([
   {
@@ -77,6 +78,7 @@ export const router = createBrowserRouter([
       { path: "owners", Component: AdminOwners },
       { path: "promotions", Component: AdminPromotions },
       { path: "reviews", Component: AdminReviews },
+      { path: "contacts", Component: AdminContacts },
       { path: "news", Component: AdminNews },
     ],
   },

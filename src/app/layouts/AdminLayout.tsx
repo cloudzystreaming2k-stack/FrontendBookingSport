@@ -1,12 +1,12 @@
 import { Outlet, Link, useLocation, Navigate, useNavigate } from "react-router";
-import { 
-  LayoutDashboard, 
-  MapPin, 
-  Calendar, 
-  CreditCard, 
-  Users, 
-  Tag, 
-  Star, 
+import {
+  LayoutDashboard,
+  MapPin,
+  Calendar,
+  CreditCard,
+  Users,
+  Tag,
+  Star,
   Newspaper,
   Menu,
   X,
@@ -18,6 +18,7 @@ import {
   ChevronDown,
   User,
   DollarSign,
+  MessageSquare,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
@@ -45,7 +46,7 @@ export function AdminLayout() {
     await logout();
     navigate("/admin/login", { replace: true });
   };
-  
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -77,6 +78,7 @@ export function AdminLayout() {
     { path: "/admin/owners", icon: Building2, label: "Quản lý chủ sân" },
     { path: "/admin/promotions", icon: Tag, label: "Khuyến mãi" },
     { path: "/admin/reviews", icon: Star, label: "Đánh giá" },
+    { path: "/admin/contacts", icon: MessageSquare, label: "Liên hệ" },
     { path: "/admin/news", icon: Newspaper, label: "Tin tức" },
   ];
 
@@ -88,11 +90,10 @@ export function AdminLayout() {
         key={item.path}
         to={item.path}
         onClick={onClick}
-        className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-          isActive
+        className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${isActive
             ? "bg-blue-600 text-white"
             : "text-gray-300 hover:bg-gray-800"
-        }`}
+          }`}
       >
         <Icon className="w-5 h-5" />
         <span className="text-sm font-medium">{item.label}</span>
@@ -101,10 +102,10 @@ export function AdminLayout() {
   };
 
   return (
-    <div className="min-h-screen flex bg-gray-100">
+    <div className="h-screen flex bg-gray-100 overflow-hidden">
       {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex lg:flex-col w-64 bg-gray-900 text-white">
-        <div className="p-6 border-b border-gray-800">
+      <aside className="hidden lg:flex lg:flex-col w-64 bg-gray-900 text-white h-full">
+        <div className="p-6 border-b border-gray-800 shrink-0">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center">
               <span className="font-bold text-lg">SB</span>
@@ -116,11 +117,11 @@ export function AdminLayout() {
           </Link>
         </div>
 
-        <nav className="flex-1 p-4 space-y-0.5">
+        <nav className="flex-1 p-4 space-y-0.5 overflow-y-auto">
           {menuItems.map((item) => renderNavItem(item))}
         </nav>
 
-        <div className="p-4 border-t border-gray-800">
+        <div className="p-4 border-t border-gray-800 shrink-0">
           <Link
             to="/"
             className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors"
@@ -169,9 +170,9 @@ export function AdminLayout() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Top Bar */}
-        <header className="bg-white shadow-sm">
+        <header className="bg-white shadow-sm shrink-0">
           <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <button
               className="lg:hidden p-2"
@@ -222,11 +223,10 @@ export function AdminLayout() {
 
                   {/* Role badge */}
                   <div className="px-4 py-2">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                      user?.role === "admin"
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${user?.role === "admin"
                         ? "bg-purple-100 text-purple-700"
                         : "bg-teal-100 text-teal-700"
-                    }`}>
+                      }`}>
                       <User className="w-3 h-3" />
                       {user?.role === "admin" ? "Quản trị viên" : "Chủ sân"}
                     </span>
@@ -248,7 +248,7 @@ export function AdminLayout() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
           <Outlet />
         </main>
       </div>
