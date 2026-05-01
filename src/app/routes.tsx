@@ -11,7 +11,7 @@ import { CourtsPage } from "./pages/CourtsPage";
 import { CourtDetailPage } from "./pages/CourtDetail/CourtDetailPage";
 
 import { PaymentPage } from "./pages/PaymentPage";
-import { ProfilePage } from "./pages/ProfilePage";
+import { ProfilePage } from "./pages/ProfilePage/ProfilePage";
 import { NewsPage } from "./pages/NewsPage";
 import { NewsDetailPage } from "./pages/NewsDetailPage";
 import { AboutPage } from "./pages/AboutPage";
