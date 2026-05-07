@@ -19,6 +19,9 @@ import {
   User,
   DollarSign,
   MessageSquare,
+  Bell,
+  CheckSquare,
+  TrendingUp,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
@@ -70,16 +73,19 @@ export function AdminLayout() {
   const menuItems = [
     { path: "/admin", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/admin/courts", icon: MapPin, label: "Quản lý sân" },
+    { path: "/admin/court-approval", icon: CheckSquare, label: "Duyệt sân" },
     { path: "/admin/court-types", icon: Shapes, label: "Loại sân" },
     { path: "/admin/facilities", icon: Link2, label: "Tiện ích" },
     { path: "/admin/court-pricing", icon: DollarSign, label: "Cấu hình giá giờ" },
     { path: "/admin/bookings", icon: Calendar, label: "Quản lý đặt sân" },
+    { path: "/admin/revenue", icon: TrendingUp, label: "Báo cáo doanh thu" },
     { path: "/admin/users", icon: Users, label: "Quản lý người dùng" },
     { path: "/admin/owners", icon: Building2, label: "Quản lý chủ sân" },
     { path: "/admin/promotions", icon: Tag, label: "Khuyến mãi" },
     { path: "/admin/reviews", icon: Star, label: "Đánh giá" },
     { path: "/admin/contacts", icon: MessageSquare, label: "Liên hệ" },
     { path: "/admin/news", icon: Newspaper, label: "Tin tức" },
+    { path: "/admin/notifications", icon: Bell, label: "Thông báo" },
   ];
 
   const renderNavItem = (item: typeof menuItems[0], onClick?: () => void) => {
@@ -91,8 +97,8 @@ export function AdminLayout() {
         to={item.path}
         onClick={onClick}
         className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${isActive
-            ? "bg-blue-600 text-white"
-            : "text-gray-300 hover:bg-gray-800"
+          ? "bg-blue-600 text-white"
+          : "text-gray-300 hover:bg-gray-800"
           }`}
       >
         <Icon className="w-5 h-5" />
@@ -224,8 +230,8 @@ export function AdminLayout() {
                   {/* Role badge */}
                   <div className="px-4 py-2">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${user?.role === "admin"
-                        ? "bg-purple-100 text-purple-700"
-                        : "bg-teal-100 text-teal-700"
+                      ? "bg-purple-100 text-purple-700"
+                      : "bg-teal-100 text-teal-700"
                       }`}>
                       <User className="w-3 h-3" />
                       {user?.role === "admin" ? "Quản trị viên" : "Chủ sân"}

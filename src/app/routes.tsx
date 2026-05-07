@@ -37,6 +37,9 @@ import { AdminOwners } from "./pages/admin/AdminOwners";
 import { GuestRoute } from "./components/GuestRoute";
 import { AdminCourtPricing } from "./pages/admin/court-pricing/AdminCourtPricing";
 import { AdminContacts } from "./pages/admin/AdminContacts";
+import { AdminNotifications } from "./pages/admin/AdminNotifications";
+import { AdminCourtApproval } from "./pages/admin/AdminCourtApproval";
+import { AdminRevenue } from "./pages/admin/AdminRevenue";
 
 export const router = createBrowserRouter([
   {
@@ -80,6 +83,9 @@ export const router = createBrowserRouter([
       { path: "reviews", Component: AdminReviews },
       { path: "contacts", Component: AdminContacts },
       { path: "news", Component: AdminNews },
+      { path: "notifications", Component: AdminNotifications },
+      { path: "court-approval", Component: AdminCourtApproval },
+      { path: "revenue", Component: AdminRevenue },
     ],
   },
   {
