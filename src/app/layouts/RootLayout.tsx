@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { io, Socket } from "socket.io-client";
 import api from "../lib/api";
+import { ChatbotWidget } from "../components/chatbot/ChatbotWidget";
 
 // ─── Notification Type ────────────────────────────────────────────────────────
 interface Notification {
@@ -440,6 +441,8 @@ export function RootLayout() {
           </div>
         </footer>
       )}
+      {/* Chatbot Widget */}
+      <ChatbotWidget />
     </div>
   );
 }
