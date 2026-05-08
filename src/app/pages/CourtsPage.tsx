@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router";
 import { MapPin, Search, Map as MapIcon, SlidersHorizontal, List, ChevronLeft, ChevronRight, Filter, Loader2 } from "lucide-react";
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Button } from "../components/ui/button";
@@ -40,12 +40,22 @@ interface CourtTypeRef {
   color: string;
 }
 
+const MapEvents = ({ onMoveEnd }: { onMoveEnd: (bounds: L.LatLngBounds) => void }) => {
+  useMapEvents({
+    moveend: (e) => onMoveEnd(e.target.getBounds()),
+  });
+  return null;
+};
+
 export function CourtsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("all");
   const [radius, setRadius] = useState(10);
   const [isMapView, setIsMapView] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [mapBounds, setMapBounds] = useState<L.LatLngBounds | null>(null);
+  const [showSearchHere, setShowSearchHere] = useState(false);
+  const [searchBounds, setSearchBounds] = useState<L.LatLngBounds | null>(null);
 
   // Court data from API
   const [courts, setCourts] = useState<ApiCourt[]>([]);
@@ -93,6 +103,13 @@ export function CourtsPage() {
     if (selectedProvince !== "all") params.provinceCode = selectedProvince;
     if (selectedDistrict !== "all") params.districtCode = selectedDistrict;
 
+    if (searchBounds) {
+      params.swLat = searchBounds.getSouthWest().lat.toString();
+      params.swLng = searchBounds.getSouthWest().lng.toString();
+      params.neLat = searchBounds.getNorthEast().lat.toString();
+      params.neLng = searchBounds.getNorthEast().lng.toString();
+    }
+
     api.get("/courts", { params })
       .then(res => {
         setCourts(res.data.courts ?? []);
@@ -100,7 +117,7 @@ export function CourtsPage() {
       })
       .catch(() => { })
       .finally(() => setIsLoadingCourts(false));
-  }, [selectedType, selectedProvince, selectedDistrict]);
+  }, [selectedType, selectedProvince, selectedDistrict, searchBounds]);
 
   // Filter client-side theo search query
   const filteredCourts = useMemo(() => {
@@ -111,8 +128,8 @@ export function CourtsPage() {
     );
   }, [courts, searchQuery]);
 
-  // Default coordinate for center map if courts lack coordinates
-  const hcmCenter: [number, number] = [10.7769, 106.7009];
+  // Default coordinate for center map if courts lack coordinates (Hà Nội)
+  const hnCenter: [number, number] = [21.0285, 105.8542];
 
   const createCustomIcon = (index: number) => {
     return L.divIcon({
@@ -147,7 +164,7 @@ export function CourtsPage() {
                   <div>
                     <span className="font-extrabold text-[#111827] text-[14px]">{filteredCourts.length} kết quả</span>
                     {isLoadingCourts && <Loader2 className="w-3 h-3 animate-spin text-[#4ba2c9] inline ml-1" />}
-                    <span className="text-[#8daab9] mx-1">ở Thành phố Hồ Chí Minh</span>
+                    <span className="text-[#8daab9] mx-1">ở Thành phố Hà Nội</span>
                   </div>
                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-[#1a769d] hover:bg-[#eaf4f9]">
                     <SlidersHorizontal className="w-4 h-4" />
@@ -195,6 +212,21 @@ export function CourtsPage() {
 
             {/* Map Area */}
             <div className="flex-1 relative bg-[#e5e5e5]">
+              {showSearchHere && (
+                <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[1000]">
+                  <Button 
+                    onClick={() => {
+                      setSearchBounds(mapBounds);
+                      setShowSearchHere(false);
+                    }} 
+                    className="bg-white text-[#1a769d] hover:bg-gray-50 border border-[#e1eff5] shadow-[0_4px_16px_rgba(0,0,0,0.12)] rounded-full px-6 h-10 flex items-center gap-2 font-bold text-[13px] hover:-translate-y-0.5 transition-all"
+                  >
+                    <Search className="w-4 h-4" />
+                    Tìm khu vực này
+                  </Button>
+                </div>
+              )}
+              
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 className="absolute top-1/2 -translate-y-1/2 left-0 z-[1000] w-5 h-14 bg-white border border-[#e1eff5] border-l-0 rounded-r-lg shadow-[4px_0_12px_rgba(0,0,0,0.05)] flex items-center justify-center hover:bg-gray-50 transition-colors"
@@ -203,7 +235,7 @@ export function CourtsPage() {
               </button>
 
               <MapContainer
-                center={hcmCenter}
+                center={hnCenter}
                 zoom={13}
                 className="w-full h-full z-0 relative"
                 zoomControl={true}
@@ -212,10 +244,14 @@ export function CourtsPage() {
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
+                <MapEvents onMoveEnd={(bounds) => {
+                  setMapBounds(bounds);
+                  setShowSearchHere(true);
+                }} />
                 {filteredCourts.map((court, idx) => {
                   const pos: [number, number] = (court.latitude && court.longitude)
                     ? [court.latitude, court.longitude]
-                    : [hcmCenter[0] + (Math.random() - 0.5) * 0.08, hcmCenter[1] + (Math.random() - 0.5) * 0.08];
+                    : [hnCenter[0] + (Math.random() - 0.5) * 0.08, hnCenter[1] + (Math.random() - 0.5) * 0.08];
                   return (
                     <Marker
                       key={court._id}
