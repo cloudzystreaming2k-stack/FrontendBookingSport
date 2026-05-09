@@ -8,6 +8,7 @@ import {
    PieChart,
    Download,
    Filter,
+   Loader2,
    Calendar,
    MapPin,
    Trophy,
@@ -35,6 +36,7 @@ import {
 } from "recharts";
 import { mockBookings, mockCourts } from "../../data/mockData";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
    vnpay: "VNPay",
@@ -45,6 +47,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 };
 
 export function AdminRevenue() {
+   const [isExporting, setIsExporting] = useState(false);
    const [courtFilter, setCourtFilter] = useState("all");
    const [sportTypeFilter, setSportTypeFilter] = useState("all");
    const [dateFrom, setDateFrom] = useState("");
@@ -209,8 +212,129 @@ export function AdminRevenue() {
    const CHART_COLORS = ["#0d9488", "#14b8a6", "#2dd4bf", "#5eead4", "#99f6e4"];
    const SPORT_COLORS = ["#0d9488", "#3b82f6", "#f59e0b"];
 
-   const handleExport = () => {
-      toast.success("Đang xuất báo cáo doanh thu...");
+   const handleExport = async () => {
+      setIsExporting(true);
+      try {
+         toast.info("Đang tạo file báo cáo...");
+
+         // 1. Dữ liệu Tổng quan
+         const overviewData = [
+            {
+               "Chỉ số": "Tổng doanh thu",
+               "Giá trị": overviewStats.totalRevenue,
+            },
+            {
+               "Chỉ số": "Tổng số đơn",
+               "Giá trị": overviewStats.totalBookings,
+            },
+            {
+               "Chỉ số": "Doanh thu tháng này",
+               "Giá trị": overviewStats.thisMonthRevenue,
+            },
+            {
+               "Chỉ số": "Tăng trưởng so với tháng trước (%)",
+               "Giá trị": overviewStats.growthRate.toFixed(2),
+            },
+            {
+               "Chỉ số": "Giá trị trung bình/đơn",
+               "Giá trị": overviewStats.avgBookingValue,
+            },
+         ];
+
+         // 2. Chi tiết giao dịch
+         const transactionsData = filteredBookings.map((b) => ({
+            "Mã giao dịch": b.id,
+            "Tên sân": b.courtName,
+            "Khách hàng": b.customerName || b.user?.name || "N/A",
+            "Số điện thoại": b.customerPhone || b.user?.phoneNumber || "N/A",
+            "Tổng tiền (VNĐ)": b.totalPrice,
+            "Trạng thái": b.paymentStatus === "paid" ? "Đã thanh toán" : b.paymentStatus,
+            "Phương thức": PAYMENT_METHOD_LABELS[b.paymentMethod || "vnpay"] || b.paymentMethod,
+            "Ngày đặt": new Date(b.createdAt).toLocaleString("vi-VN"),
+         }));
+
+         // 3. Theo ngày
+         const byDayData = revenueByDayData.map((d) => ({
+            "Ngày": d.date,
+            "Doanh thu (VNĐ)": d.doanhthu * 1000,
+            "Số giao dịch": d.giaodich,
+         }));
+
+         // 4. Theo sân
+         const byCourtData = revenueByCourtData.map((c) => ({
+            "Tên sân": c.name,
+            "Doanh thu (VNĐ)": c.amount,
+            "Số giao dịch": filteredBookings.filter((b) => b.courtName === c.name).length,
+         }));
+
+         // Tạo Workbook
+         const wb = XLSX.utils.book_new();
+
+         // Hàm helper tạo sheet có layout đẹp
+         const appendSheetWithLayout = (data: any[], sheetName: string, title: string) => {
+            // 1. Tạo sheet với tiêu đề và thông tin chung
+            const wsData = [
+               [title.toUpperCase()], // Dòng 1: Tiêu đề lớn
+               [], // Dòng 2: Trống
+               [`Ngày lập báo cáo: ${new Date().toLocaleString("vi-VN")}`], // Dòng 3: Thời gian
+               [`Bộ lọc: Sân (${courtFilter === "all" ? "Tất cả" : courtFilter}) - Loại (${sportTypeFilter === "all" ? "Tất cả" : sportTypeFilter})`], // Dòng 4: Filter
+               [], // Dòng 5: Trống
+            ];
+            
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+            // 2. Thêm dữ liệu bảng bắt đầu từ dòng 6 (A6)
+            if (data.length > 0) {
+               XLSX.utils.sheet_add_json(ws, data, { origin: "A6" });
+            } else {
+               XLSX.utils.sheet_add_aoa(ws, [["Không có dữ liệu"]], { origin: "A6" });
+            }
+
+            // 3. Tính toán độ rộng cột cho bảng dữ liệu
+            const keys = Object.keys(data[0] || {});
+            const colWidths = keys.map((key) => {
+               const maxLen = Math.max(
+                  key.length,
+                  ...data.map((row) => (row[key] ? row[key].toString().length : 0))
+               );
+               return { wch: Math.max(maxLen + 2, 15) }; // Rộng tối thiểu 15, có padding
+            });
+            
+            // Đảm bảo cột đầu tiên đủ rộng để hiển thị tiêu đề nếu bảng ít cột
+            if (colWidths[0] && colWidths[0].wch < 35) {
+               colWidths[0].wch = 35; 
+            }
+
+            ws["!cols"] = colWidths;
+
+            // 4. Merge ô cho tiêu đề lớn (ví dụ: A1 -> E1)
+            const numCols = Math.max(keys.length, 5); 
+            ws["!merges"] = [
+               { s: { r: 0, c: 0 }, e: { r: 0, c: numCols - 1 } },
+            ];
+
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+         };
+
+         appendSheetWithLayout(overviewData, "Tổng Quan", "BÁO CÁO TỔNG QUAN DOANH THU");
+         appendSheetWithLayout(transactionsData, "Chi Tiết Giao Dịch", "BẢNG CHI TIẾT GIAO DỊCH ĐẶT SÂN");
+         appendSheetWithLayout(byDayData, "Theo Ngày", "THỐNG KÊ DOANH THU THEO NGÀY");
+         appendSheetWithLayout(byCourtData, "Theo Sân", "THỐNG KÊ DOANH THU THEO TỪNG SÂN");
+
+         // Tên file theo ngày
+         const today = new Date();
+         const dateString = `${today.getFullYear()}${(today.getMonth() + 1).toString().padStart(2, "0")}${today.getDate().toString().padStart(2, "0")}`;
+         const fileName = `Bao_Cao_Doanh_Thu_${dateString}.xlsx`;
+
+         // Xuất file
+         XLSX.writeFile(wb, fileName);
+         toast.success("Đã xuất báo cáo thành công!");
+      } catch (error) {
+         console.error("Lỗi khi xuất Excel:", error);
+         toast.error("Có lỗi xảy ra khi xuất báo cáo.");
+      } finally {
+         setIsExporting(false);
+      }
    };
 
    const handleReset = () => {
@@ -232,9 +356,17 @@ export function AdminRevenue() {
                   Phân tích doanh thu theo sân, loại sân và phương thức thanh toán
                </p>
             </div>
-            <Button onClick={handleExport} className="bg-teal-600 hover:bg-teal-700">
-               <Download className="w-4 h-4 mr-2" />
-               Xuất báo cáo
+            <Button 
+               onClick={handleExport} 
+               disabled={isExporting}
+               className="bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400"
+            >
+               {isExporting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+               ) : (
+                  <Download className="w-4 h-4 mr-2" />
+               )}
+               {isExporting ? "Đang xuất..." : "Xuất báo cáo"}
             </Button>
          </div>
 

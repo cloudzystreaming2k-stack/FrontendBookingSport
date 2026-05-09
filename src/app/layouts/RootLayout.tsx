@@ -144,7 +144,7 @@ export function RootLayout() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-50">
+      <header className="bg-gray-100 shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
@@ -210,9 +210,8 @@ export function RootLayout() {
                             <div
                               key={notification._id}
                               onClick={() => handleMarkOneRead(notification._id)}
-                              className={`flex flex-col px-3 py-3 cursor-pointer border-b last:border-b-0 hover:bg-gray-50 transition-colors ${
-                                !notification.isRead ? "bg-blue-50" : ""
-                              }`}
+                              className={`flex flex-col px-3 py-3 cursor-pointer border-b last:border-b-0 hover:bg-gray-50 transition-colors ${!notification.isRead ? "bg-blue-50" : ""
+                                }`}
                             >
                               <div className="flex justify-between gap-2">
                                 <div className="flex-1">
